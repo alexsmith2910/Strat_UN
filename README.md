@@ -1,7 +1,6 @@
-You will need to install pygame to run the application.
+This is the pyglet branch of the Strat_UN git.
 
-Simple player movement made smooth so go well with the camera movement.
-
-Tiled correctly, can be changed.
-
-Plan: Create a PyCharm project so pygame and other instances do not have to be manually installed.
+Currently this branch has:
+  - random generation of map (random colour of ground tiles and basic water generation
+  - player that moves per tile (15 frame delay on a frame rate of 120 = 0.15 seconds)
+  - detection of player on specific tiles (currently source water only - dark blue)
