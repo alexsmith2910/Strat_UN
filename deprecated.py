@@ -1,3 +1,5 @@
+# square = pyglet.shapes.Rectangle(x=200, y=200, width=200, height=200, color=(55, 55, 255))
+
 # if self.key_handler[key.LEFT] or self.lcounter != 0:
 #     angle_radians = -math.radians(self.rotation) + (math.pi)
 #     force_x = math.cos(angle_radians) * self.thrust * dt

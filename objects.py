@@ -1,7 +1,44 @@
 import pyglet
 from pyglet.window import key, mouse
-global game_objects
-game_objects = []
+from globals import *
+
+player_image = pyglet.image.load("Test-sprite.png")
+player_image.anchor_x = 10
+player_image.anchor_y = 10
+
+drill_image = pyglet.image.load("Building test sprite-drill.png")
+drill_image.anchor_x = 10
+drill_image.anchor_y = 10
+
+class NameError(Exception):
+    """Attributes:
+        args[0] = Error Message
+        args[1] = Issue
+    """
+
+    def __init__(self, *args):
+        if args:
+            self.message = args[0]
+            self.issue = args[1]
+        else:
+            self.message = None
+            self.issue = None
+
+        if self.issue == 0:
+            self.issue = "Generate object"
+        elif self.issue == 1:
+            self.issue = "Extra issue"
+        else:
+            self.issue = "Commit to unknown operation"
+
+    def __str__(self):
+        if self.message:
+            return "NameError, Failed to {0}, message: {1}".format(self.issue, self.message)
+            # raise
+        else:
+            return "NameError, has been raised."
+            # raise
+
 class PhysicalObject(pyglet.sprite.Sprite):
 
     def __init__(self, *args, **kwargs):
@@ -16,8 +53,8 @@ class PhysicalObject(pyglet.sprite.Sprite):
     def check_bounds(self):
         min_x = -self.image.width / 2
         min_y = -self.image.height / 2
-        max_x = 800 + self.image.width / 2
-        max_y = 600 + self.image.height / 2
+        max_x = screenresx + self.image.width / 2
+        max_y = screenresy + self.image.height / 2
         if self.x < min_x:
             self.x = max_x
         elif self.x > max_x:
@@ -39,17 +76,11 @@ class TileObject(pyglet.sprite.Sprite):
         self.x += self.velocity_x * dt
         self.y += self.velocity_y * dt
 
-    def set_owner(self, new_owner):
-        self.owner = new_owner
-
-    def get_owner(self):
-        return self.owner
-
     def check_bounds(self):
         min_x = -self.image.width / 2
         min_y = -self.image.height / 2
-        max_x = 800 + self.image.width / 2
-        max_y = 600 + self.image.height / 2
+        max_x = screenresx + self.image.width / 2
+        max_y = screenresy + self.image.height / 2
         if self.x < min_x:
             self.x = max_x
         elif self.x > max_x:
@@ -76,20 +107,41 @@ class TileBG(pyglet.shapes.Rectangle):
     def get_barrier_state(self):
         return self.barrier
 
-player_image = pyglet.image.load("Test-sprite.png")
-player_image.anchor_x = 10
-player_image.anchor_y = 10
+class Building(TileObject):
+    def __init__(self, *args, **kwargs):
+        super().__init__(img=drill_image, *args, **kwargs)
+        self.owner = None
+
+    def get_owner(self):
+        return self.owner
+
+    def set_owner(self, new_owner):
+        self.owner = new_owner
+        print(self.owner)
 
 class Player(TileObject):
     """class for generating a object for the player to control"""
 
     def __init__(self, *args, **kwargs):
         super().__init__(img=player_image, *args, **kwargs)
-
+        self.id = None
         self.pixels = 20
         self.key_handler = key.KeyStateHandler()
         self.scounter = 0
         self.bcounter = 0
+
+    def set_name(self, new_name):
+        """sets the name for the player, use ONCE per player ONLY"""
+        if self.id == None:
+            self.id = str(new_name)
+            player_list.append(str(new_name))
+
+    def get_name(self):
+        if self.id != None:
+            return self.id
+        else:
+            raise NameError("Object has been attempted to be generated without player being given an ID", 0)
+
 
     def add_scounter(self):
         self.scounter += 1
@@ -130,16 +182,8 @@ class Player(TileObject):
                 self.scounter += 1
 
         if self.key_handler[key.B] and self.bcounter == 0:  # create some sort of build function
-            # for i in squares:
-            #     for j in i:
-            #         tempx = j.x + 10
-            #         tempy = j.y + 10
-            #         if tempx - player_sprite.get_x() == 0.0 and tempy - player_sprite.get_y() == 0:
-            #             j.color = (255, 255, 255)
-            tempx = self.x + 10
-            tempy = self.y + 10
-            game_objects.append(" ")
-            print(game_objects)
+            building_objects.append(Building(x=self.x, y=self.y))
+            building_objects[len(player_list)-1].set_owner(self.get_name())
             self.bcounter += 1
 
         if self.bcounter != 0:
@@ -152,5 +196,5 @@ class Player(TileObject):
             self.velocity_x = 0
             self.velocity_y = 0
             self.scounter = 0 if self.scounter == 15 else self.scounter
-        if self.bcounter == 120:
-            self.bcounter = 0 if self.bcounter == 120 else self.bcounter
+        if self.bcounter == 600:
+            self.bcounter = 0 if self.bcounter == 600 else self.bcounter
