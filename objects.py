@@ -1,6 +1,7 @@
 import pyglet
 from pyglet.window import key, mouse
-from globals import *
+#import globals
+import globals
 
 player_image = pyglet.image.load("Test-sprite.png")
 player_image.anchor_x = 10
@@ -53,8 +54,8 @@ class PhysicalObject(pyglet.sprite.Sprite):
     def check_bounds(self):
         min_x = -self.image.width / 2
         min_y = -self.image.height / 2
-        max_x = screenresx + self.image.width / 2
-        max_y = screenresy + self.image.height / 2
+        max_x = globals.screenresx + self.image.width / 2
+        max_y = globals.screenresy + self.image.height / 2
         if self.x < min_x:
             self.x = max_x
         elif self.x > max_x:
@@ -79,8 +80,8 @@ class TileObject(pyglet.sprite.Sprite):
     def check_bounds(self):
         min_x = -self.image.width / 2
         min_y = -self.image.height / 2
-        max_x = screenresx + self.image.width / 2
-        max_y = screenresy + self.image.height / 2
+        max_x = globals.screenresx + self.image.width / 2
+        max_y = globals.screenresy + self.image.height / 2
         if self.x < min_x:
             self.x = max_x
         elif self.x > max_x:
@@ -110,35 +111,55 @@ class TileBG(pyglet.shapes.Rectangle):
 class Building(TileObject):
     def __init__(self, *args, **kwargs):
         super().__init__(img=drill_image, *args, **kwargs)
-        self.owner = None
+        self.owner_id = None
+        self.owner_num = None
 
     def get_owner(self):
-        return self.owner
+        return self.owner_num
 
-    def set_owner(self, new_owner):
-        self.owner = new_owner
-        print(self.owner)
+    def set_owner(self, new_owner_id_set):
+        self.owner_id = new_owner_id_set[0]
+        self.owner_num = new_owner_id_set[1]
+        #print(self.owner)
+
+class Drill(Building):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)#img=drill_image,
+        self.color = (0, 255, 0)
+        self.mine_rate = 7.5
+
+    def update(self, dt):
+        mined = self.mine_rate * dt
+        #print(self.owner_num)
+        if self.owner_num == 1:
+            globals.player1_res += mined
+        if self.owner_num == 2:
+            globals.player2_res += mined
+
 
 class Player(TileObject):
     """class for generating a object for the player to control"""
 
     def __init__(self, *args, **kwargs):
         super().__init__(img=player_image, *args, **kwargs)
+        self.num = -1
         self.id = None
         self.pixels = 20
         self.key_handler = key.KeyStateHandler()
         self.scounter = 0
         self.bcounter = 0
+        globals.player_list.append(self)
 
-    def set_name(self, new_name):
+    def set_id(self, new_name, num=1):
         """sets the name for the player, use ONCE per player ONLY"""
         if self.id == None:
             self.id = str(new_name)
-            player_list.append(str(new_name))
+            self.num = num
+            globals.player_list.append(str(new_name))
 
-    def get_name(self):
+    def get_id(self):
         if self.id != None:
-            return self.id
+            return self.id, self.num
         else:
             raise NameError("Object has been attempted to be generated without player being given an ID", 0)
 
@@ -182,8 +203,10 @@ class Player(TileObject):
                 self.scounter += 1
 
         if self.key_handler[key.B] and self.bcounter == 0:  # create some sort of build function
-            building_objects.append(Building(x=self.x, y=self.y))
-            building_objects[len(player_list)-1].set_owner(self.get_name())
+            globals.building_objects.append(Drill(x=self.x, y=self.y))
+            print(globals.building_objects)
+            globals.building_objects[len(globals.building_objects)-1].set_owner(self.get_id())
+            #building_objects[len(player_list) - 1].color = (0, 0, 255) # NOTE: color function acts as a 'tint' added to sprites
             self.bcounter += 1
 
         if self.bcounter != 0:

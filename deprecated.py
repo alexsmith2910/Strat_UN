@@ -103,3 +103,45 @@
 #                                           )
 # vertex_list.draw(pyglet.gl.GL_POINTS)
 # player.draw()
+
+# def tiles_map(resx=screenresx, resy=screenresy, size=20):
+#     ylayers = resy//size
+#     print(ylayers)
+#     print(ylayers)
+#     tiles = []
+#     for i in range(ylayers):
+#         tiles.append([])
+#         #print(str(len(tiles)) + ";ayers")
+#     tilebatch = pyglet.graphics.Batch()
+#     for i in range(resy//size):
+#         #print("layer" + str(i))
+#         for j in range (resx//size):
+#             #r = secrets.randbelow(255)
+#             g = secrets.randbelow(128)
+#             g2 = secrets.randbelow(64)
+#             g3 = g-g2
+#             if g3 < 1:
+#                 g3 = 20
+#             g3 += 25
+#             #b = secrets.randbelow(255)
+#             tiles[i-1].append(objects.TileBG(x=size * j, y=size * i, width=size, height=size, color=(0, g3, 0), batch=tilebatch))
+#     for i in range(len(tiles)):
+#         choice = secrets.randbelow(3)
+#         if choice == 0:
+#             x_choice = secrets.randbelow(16)
+#             (tiles[i])[x_choice].color = (0, 0, 255)
+#             (tiles[i])[x_choice].make_barrier()
+#             val_list = []
+#             for i in range(4):
+#                 for i in range(10):
+#                     val_list.append(secrets.randbelow(2))
+#                 if val_list[0] == 1:
+#                     (tiles[i])[x_choice-1].color = (100, 100, 255)
+#                 elif val_list[1] == 1:
+#                     (tiles[i])[x_choice+1].color = (100, 100, 255)
+#                 elif val_list[2] == 1:
+#                     (tiles[i-1])[x_choice].color = (100, 100, 255)
+#                 elif val_list[3] == 1 and i < resy//2:
+#                     (tiles[i+1])[x_choice].color = (100, 100, 255)
+#
+#     return tiles, tilebatch
