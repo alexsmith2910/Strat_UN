@@ -6,4 +6,4 @@ Currently this branch has:
   - detection of player on specific tiles (currently source water only - dark blue)
   - a generic Building class to be used to create functional buildings
   - a drill which allows for resources to be 'mined' for the player to use
-#GPG test2
+  - (WIP) A basic turret to use to defend yourself
