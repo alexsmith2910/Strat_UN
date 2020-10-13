@@ -1,6 +1,7 @@
 import random
-import secrets
 import math
+import inspect
+import secrets
 import pyglet
 from pyglet.gl import *
 from pyglet.window import key, mouse
@@ -15,7 +16,7 @@ class game_window(pyglet.window.Window):
         self.player_image.anchor_x = 10
         self.player_image.anchor_y = 10
         self.set_size(globals.screenresx, globals.screenresy)
-        self.player_sprite = objects.Player(x=910, y=550)
+        self.player_sprite = objects.Player(x=550, y=550)
         self.player_sprite.set_id("Zestyy", 1)
         self.push_handlers(self.player_sprite)
         self.push_handlers(self.player_sprite.key_handler)
@@ -29,26 +30,39 @@ class game_window(pyglet.window.Window):
         for obj in self.game_objects:
             obj.update(dt)
             obj.check_bounds()
-        for i in self.squares:
-            for j in i:
-                if j.get_barrier_state():
-                    tempx = j.x + 10
-                    tempy = j.y + 10
-                if j.get_barrier_state() and tempx - self.player_sprite.get_x() == 0.0 and tempy - self.player_sprite.get_y() == 0:
-                    for i in self.squares:
-                        for j in i:
-                            j.color = (255, 0, 0)
+        for obj in globals.building_objects:
+            if isinstance(obj, objects.Basic_Turret):
+                obj.set_targetx(self.player_sprite.get_x())
+                obj.set_targety(self.player_sprite.get_y())
+            #obj.update(dt)
+        # for i in self.squares:
+        #     for j in i:
+        #         if j.get_barrier_state():
+        #             tempx = j.x + 10
+        #             tempy = j.y + 10
+        #         if j.get_barrier_state() and tempx - self.player_sprite.get_x() == 0.0 and tempy - self.player_sprite.get_y() == 0:
+        #             for i in self.squares:
+        #                 for j in i:
+        #                     j.color = (255, 0, 0)
 
     def on_draw(self):
         self.clear()
         self.bg_batch.draw()
         for i in globals.building_objects:
             i.draw()
-            # print(i)
+            if isinstance(i, objects.Basic_Turret):
+                i.get_tracer().draw()
         self.player_sprite.draw()
         self.fps_display.draw()
+            # print(i)
+            # wont find this until u read it yeah well I found it so shut
+        # self.player_sprite.draw()
+        # self.fps_display.draw()
+        # pyglet.graphics.draw(1, pyglet.gl.GL_POINTS,
+        #                      ('v2i', (500, 500))
+        #                      )#this is currently in use to show the target that the turret is supposed to point at
 
-    def get_game_obhects(self):
+    def get_game_objects(self):
         return self.game_objects
 
     def tiles_map(self, resx=globals.screenresx, resy=globals.screenresy, size=20):
@@ -106,6 +120,13 @@ class data_window(pyglet.window.Window):
                                   font_size=36,
                                   x=self._width//2, y=self._height//2,
                                   anchor_x='center', anchor_y='center')
+        self.selection_text = "selection of building here"
+        self.selection_label = pyglet.text.Label(self.selection_text,
+                                  font_name='Bebas Neue',
+                                  font_size=36,
+                                  x=self._width//2, y=(self._height//2)-40,
+                                  anchor_x='center', anchor_y='center')
+
         pyglet.clock.schedule_interval(self.update, 1 / 120.0)
 
 
@@ -115,15 +136,19 @@ class data_window(pyglet.window.Window):
         for i in globals.building_objects:
             i.update(dt)
             # self.obj_text += str(i)
-        self.obj_text = str(round(globals.player1_res, 1))
-        #print(player1_res)
+        self.obj_text = "Mineral: " + str(round(globals.player1_lv1_res, 1))#ℤens
         self.obj_label.text = self.obj_text
+        self.selection_text_temp = str(game_window_run.player_sprite.get_select()).split("'")
+        self.selection_text_temp = str((self.selection_text_temp[1])[8:])
+        self.selection_text = "Selection: " + str(self.selection_text_temp)
+        self.selection_label.text = self.selection_text
     def on_draw(self):
         self.clear()
         self.obj_label.draw()
+        self.selection_label.draw()
 
 
-# label = pyglet.text.Label('Fuck off nick',
+# label = pyglet.text.Label('Fuck off nick', j
 #                           font_name='Have Heart One',
 #                           font_size=36,
 #                           x=game_window.width//2, y=game_window.height//2,
@@ -133,7 +158,8 @@ class data_window(pyglet.window.Window):
     #vertex_list = pyglet.graphics.vertex_list(1024, 'v3f', 'c4B', 't2f', 'n3f')
 # event_logger = pyglet.window.event.WindowEventLogger()
 # window.push_handlers(event_logger)#used to find events to connect to commands
-
 game_window_run = game_window()#width = screenresx, height=screenresy
 data_window_run = data_window()
 pyglet.app.run()# kek or cringe
+
+

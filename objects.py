@@ -1,7 +1,14 @@
+import os
+import math
 import pyglet
 from pyglet.window import key, mouse
-#import globals
+import secrets
 import globals
+import animations.animations
+
+building_placeholder_image = pyglet.image.load("Placeholder-building.png")
+building_placeholder_image.anchor_x = 10
+building_placeholder_image.anchor_y = 10
 
 player_image = pyglet.image.load("Test-sprite.png")
 player_image.anchor_x = 10
@@ -10,6 +17,23 @@ player_image.anchor_y = 10
 drill_image = pyglet.image.load("Building test sprite-drill.png")
 drill_image.anchor_x = 10
 drill_image.anchor_y = 10
+
+turret_image = pyglet.image.load("Strat_UN Turret.png")
+turret_image.anchor_x = 10
+turret_image.anchor_y = 10
+
+#drill_ani = pyglet.resource.animation("Drill_animation.gif")
+
+#drill_frames = []
+# for subdir, dirs, files in os.walk(drill_path):
+#     for filename in files:
+#         filepath = subdir + os.sep + filename
+#         drill_frames.append(pyglet.resource.image(filepath))
+# print(drill_frames)
+
+drill_ani = pyglet.image.Animation.from_image_sequence(animations.animations.drill_frames, duration=0.017, loop=True)
+
+
 
 class NameError(Exception):
     """Attributes:
@@ -110,12 +134,17 @@ class TileBG(pyglet.shapes.Rectangle):
 
 class Building(TileObject):
     def __init__(self, *args, **kwargs):
-        super().__init__(img=drill_image, *args, **kwargs)
+        super().__init__(img=building_placeholder_image, *args, **kwargs)
         self.owner_id = None
         self.owner_num = None
+        self.name = None
+        self.lv = 1
 
     def get_owner(self):
         return self.owner_num
+
+    def get_name(self):
+        return self.name
 
     def set_owner(self, new_owner_id_set):
         self.owner_id = new_owner_id_set[0]
@@ -125,16 +154,92 @@ class Building(TileObject):
 class Drill(Building):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)#img=drill_image,
-        self.color = (0, 255, 0)
-        self.mine_rate = 7.5
+        self.image = drill_image
+        self.color = (0, 0, 0)
+        self.name = "Drill"
+        self.mine_rate = secrets.choice([2.5, 2.75, 3, 3.25, 3.5])
+        self.built = False
+        self.build_timer = 10.0
 
     def update(self, dt):
-        mined = self.mine_rate * dt
-        #print(self.owner_num)
-        if self.owner_num == 1:
-            globals.player1_res += mined
-        if self.owner_num == 2:
-            globals.player2_res += mined
+        if not self.built:
+            self.build_timer -= dt
+            if self.build_timer <= 0:
+                self.image = drill_ani
+                # self.x -= 10
+                # self.y -= 10 # done because the anchor for position changes from the centre to bottom left corner
+                self.color = (0, 255, 0)
+                self.built = True
+        else:
+            mined = self.mine_rate * dt
+            #print(self.owner_num)
+            if self.owner_num == 1:
+                globals.player1_lv1_res += mined
+            if self.owner_num == 2:
+                globals.player2_lv1_res += mined
+
+    def upgrade(self):
+        self.mine_rate *= 1.2
+
+
+class Basic_Turret(Building):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.image = turret_image
+        self.name = "Turret"
+        self.fire_rate = 1.0
+        self.targetx = 500
+        self.targety = 500
+        self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 0, color=(50, 225, 30))
+        self.trace_opacity = 255
+        self.first_burst = True
+
+    def update(self, dt):
+        self.trace_opacity -= (400 * dt)
+        #print(self.trace_opacity-10*dt)
+        if self.trace_opacity < 1:
+            self.trace_opacity = 255
+            self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 2, color=(255, 0, 0))
+        xdiff = self.targetx - self.x
+        ydiff = self.y - self.targety
+        if xdiff == 0 or ydiff == 0:
+            if self.targetx > self.x and self.targety == self.y:
+                self.rotation = 90
+            elif self.targetx == self.x and self.targety < self.y:
+                self.rotation = 180
+            elif self.targetx < self.x and self.targety == self.y:
+                self.rotation = 270
+            elif self.targetx == self.x and self.targety > self.y:
+                self.rotation = 0
+        else:
+            rawangle = math.atan(ydiff/xdiff)
+        if self.targetx < self.x and self.targety > self.y:
+            self.rotation = 270 + math.degrees(rawangle)
+        elif self.targetx > self.x and self.targety > self.y:
+            self.rotation = 90 + math.degrees(rawangle)
+        elif self.targetx > self.x and self.targety < self.y:
+            self.rotation = 90 + math.degrees(rawangle)
+        elif self.targetx < self.x and self.targety < self.y:
+            self.rotation = 270 + math.degrees(rawangle)
+
+        if self.first_burst:
+            self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 2, color=(255, 0, 0))
+            self.first_burst = False
+        #print(self.trace_opacity)
+        self.tracer.opacity = self.trace_opacity
+        # pyglet.graphics.draw(1, pyglet.gl.GL_LINES,
+        #                      ("v4i", (int(self.x), int(self.y), int(self.targetx), int(self.targety)))
+        # )
+
+    def set_targetx(self, var):
+        self.targetx = var
+
+    def set_targety(self, var):
+        self.targety = var
+
+    def get_tracer(self):
+        return self.tracer
 
 
 class Player(TileObject):
@@ -148,6 +253,8 @@ class Player(TileObject):
         self.key_handler = key.KeyStateHandler()
         self.scounter = 0
         self.bcounter = 0
+        self.selection = Drill
+        self.select_text = "Drill"
         globals.player_list.append(self)
 
     def set_id(self, new_name, num=1):
@@ -163,6 +270,14 @@ class Player(TileObject):
         else:
             raise NameError("Object has been attempted to be generated without player being given an ID", 0)
 
+    def get_x(self):
+        return self.x
+
+    def get_y(self):
+        return self.y
+
+    def get_select(self):
+        return self.selection
 
     def add_scounter(self):
         self.scounter += 1
@@ -170,54 +285,52 @@ class Player(TileObject):
     def add_bcounter(self):
         self.bcounter += 1
 
-    def get_x(self):
-        return self.x
-
-    def get_y(self):
-        return self.y
-
     def update(self, dt):
         super(Player, self).update(dt)
+        if self.key_handler[key._1]:
+            self.selection = Drill
+        if self.key_handler[key._2]:
+            self.selection = Basic_Turret
         if self.key_handler[key.W]:
             if self.key_handler[key.W] and self.scounter == 0:
                 self.y += self.pixels
             if self.scounter == 0:
-                self.scounter += 1
+                self.scounter += 1 * dt
 
         if self.key_handler[key.A]:
             if self.key_handler[key.A] and self.scounter == 0:
                 self.x -= self.pixels
             if self.scounter == 0:
-                self.scounter += 1
+                self.scounter += 1 * dt
 
         if self.key_handler[key.S]:
             if self.key_handler[key.S] and self.scounter == 0:
                 self.y -= self.pixels
             if self.scounter == 0:
-                self.scounter += 1
+                self.scounter += 1 * dt
 
         if self.key_handler[key.D]:
             if self.key_handler[key.D] and self.scounter == 0:
                 self.x += self.pixels
             if self.scounter == 0:
-                self.scounter += 1
+                self.scounter += 1 * dt
 
         if self.key_handler[key.B] and self.bcounter == 0:  # create some sort of build function
-            globals.building_objects.append(Drill(x=self.x, y=self.y))
+            globals.building_objects.append(self.selection(x=self.x, y=self.y))
             print(globals.building_objects)
             globals.building_objects[len(globals.building_objects)-1].set_owner(self.get_id())
             #building_objects[len(player_list) - 1].color = (0, 0, 255) # NOTE: color function acts as a 'tint' added to sprites
-            self.bcounter += 1
+            self.bcounter += 1 * dt
 
-        if self.bcounter != 0:
-            self.bcounter += 1
+        if self.bcounter > 0:
+            self.bcounter += 1 * dt
 
-        if self.scounter != 0:
-            self.scounter += 1
+        if self.scounter > 0:
+            self.scounter += 1 * dt
 
-        if self.scounter == 15:
+        if self.scounter >= 0.25:
             self.velocity_x = 0
             self.velocity_y = 0
-            self.scounter = 0 if self.scounter == 15 else self.scounter
-        if self.bcounter == 600:
-            self.bcounter = 0 if self.bcounter == 600 else self.bcounter
+            self.scounter = 0 if self.scounter >= 0.25 else self.scounter
+        if self.bcounter >= 10:
+            self.bcounter = 0 if self.bcounter >= 10 else self.bcounter
