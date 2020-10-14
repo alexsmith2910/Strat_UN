@@ -145,3 +145,12 @@
 #                     (tiles[i+1])[x_choice].color = (100, 100, 255)
 #
 #     return tiles, tilebatch
+
+# pyglet.graphics.draw(1, pyglet.gl.GL_LINES,
+#                      ("v4i", (int(self.x), int(self.y), int(self.targetx), int(self.targety)))
+# )
+
+# for obj in globals.building_objects: # testing for turret targeting
+#     if isinstance(obj, objects.Basic_Turret):
+#         obj.set_targetx(self.player_sprite.get_x())
+#         obj.set_targety(self.player_sprite.get_y())

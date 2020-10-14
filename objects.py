@@ -101,6 +101,12 @@ class TileObject(pyglet.sprite.Sprite):
         self.x += self.velocity_x * dt
         self.y += self.velocity_y * dt
 
+    def get_x(self):
+        return self.x
+
+    def get_y(self):
+        return self.y
+
     def check_bounds(self):
         min_x = -self.image.width / 2
         min_y = -self.image.height / 2
@@ -135,6 +141,7 @@ class TileBG(pyglet.shapes.Rectangle):
 class Building(TileObject):
     def __init__(self, *args, **kwargs):
         super().__init__(img=building_placeholder_image, *args, **kwargs)
+        self.health = 1000
         self.owner_id = None
         self.owner_num = None
         self.name = None
@@ -150,6 +157,19 @@ class Building(TileObject):
         self.owner_id = new_owner_id_set[0]
         self.owner_num = new_owner_id_set[1]
         #print(self.owner)
+
+    def hit(self, damage):
+        self.health -= damage
+
+class Target(Building):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.name = "Target"
+        self.owner_id = "Null"
+        self.owner_num = -1
+
+    def set_owner(self, *args, **kwargs):
+        pass
 
 class Drill(Building):
     def __init__(self, *args, **kwargs):
@@ -193,44 +213,46 @@ class Basic_Turret(Building):
         self.targety = 500
         self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 0, color=(50, 225, 30))
         self.trace_opacity = 255
+        self.damage = 50
         self.first_burst = True
+        self.targeting = False
 
     def update(self, dt):
+        for i in globals.building_objects:
+            if i.get_owner() != self.owner_num and self.targeting == False:
+                #print("found target" + str(i))
+                self.targetx = i.get_x()
+                self.targety = i.get_y()
+                if math.sqrt(((self.x - self.targetx)**2) + ((self.y - self.targety)**2)) <= 250:
+                    self.targeting = True
         self.trace_opacity -= (400 * dt)
-        #print(self.trace_opacity-10*dt)
-        if self.trace_opacity < 1:
-            self.trace_opacity = 255
-            self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 2, color=(255, 0, 0))
-        xdiff = self.targetx - self.x
-        ydiff = self.y - self.targety
-        if xdiff == 0 or ydiff == 0:
-            if self.targetx > self.x and self.targety == self.y:
-                self.rotation = 90
-            elif self.targetx == self.x and self.targety < self.y:
-                self.rotation = 180
-            elif self.targetx < self.x and self.targety == self.y:
-                self.rotation = 270
-            elif self.targetx == self.x and self.targety > self.y:
-                self.rotation = 0
-        else:
-            rawangle = math.atan(ydiff/xdiff)
-        if self.targetx < self.x and self.targety > self.y:
-            self.rotation = 270 + math.degrees(rawangle)
-        elif self.targetx > self.x and self.targety > self.y:
-            self.rotation = 90 + math.degrees(rawangle)
-        elif self.targetx > self.x and self.targety < self.y:
-            self.rotation = 90 + math.degrees(rawangle)
-        elif self.targetx < self.x and self.targety < self.y:
-            self.rotation = 270 + math.degrees(rawangle)
+        if self.targeting:
+            if self.trace_opacity < 1:
+                self.trace_opacity = 255
+                self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 2, color=(255, 0, 0))
+            xdiff = self.targetx - self.x
+            ydiff = self.y - self.targety
+            if xdiff == 0 or ydiff == 0:
+                if self.targetx > self.x and self.targety == self.y:
+                    self.rotation = 90
+                elif self.targetx == self.x and self.targety < self.y:
+                    self.rotation = 180
+                elif self.targetx < self.x and self.targety == self.y:
+                    self.rotation = 270
+                elif self.targetx == self.x and self.targety > self.y:
+                    self.rotation = 0
+            else:
+                rawangle = math.atan(ydiff/xdiff)
+            if (self.targetx < self.x and self.targety > self.y) or (self.targetx < self.x and self.targety < self.y):
+                self.rotation = 270 + math.degrees(rawangle)
+            elif (self.targetx > self.x and self.targety > self.y) or (self.targetx > self.x and self.targety < self.y):
+                self.rotation = 90 + math.degrees(rawangle)
 
-        if self.first_burst:
-            self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 2, color=(255, 0, 0))
-            self.first_burst = False
-        #print(self.trace_opacity)
-        self.tracer.opacity = self.trace_opacity
-        # pyglet.graphics.draw(1, pyglet.gl.GL_LINES,
-        #                      ("v4i", (int(self.x), int(self.y), int(self.targetx), int(self.targety)))
-        # )
+            if self.first_burst:
+                self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 2, color=(255, 0, 0))
+                self.first_burst = False
+            #print(self.trace_opacity)
+            self.tracer.opacity = self.trace_opacity
 
     def set_targetx(self, var):
         self.targetx = var
@@ -289,8 +311,13 @@ class Player(TileObject):
         super(Player, self).update(dt)
         if self.key_handler[key._1]:
             self.selection = Drill
+
         if self.key_handler[key._2]:
             self.selection = Basic_Turret
+
+        if self.key_handler[key._3]:
+            self.selection = Target
+
         if self.key_handler[key.W]:
             if self.key_handler[key.W] and self.scounter == 0:
                 self.y += self.pixels

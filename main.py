@@ -30,10 +30,6 @@ class game_window(pyglet.window.Window):
         for obj in self.game_objects:
             obj.update(dt)
             obj.check_bounds()
-        for obj in globals.building_objects:
-            if isinstance(obj, objects.Basic_Turret):
-                obj.set_targetx(self.player_sprite.get_x())
-                obj.set_targety(self.player_sprite.get_y())
             #obj.update(dt)
         # for i in self.squares:
         #     for j in i:
@@ -49,9 +45,9 @@ class game_window(pyglet.window.Window):
         self.clear()
         self.bg_batch.draw()
         for i in globals.building_objects:
-            i.draw()
             if isinstance(i, objects.Basic_Turret):
                 i.get_tracer().draw()
+            i.draw()
         self.player_sprite.draw()
         self.fps_display.draw()
             # print(i)
