@@ -16,7 +16,7 @@ class game_window(pyglet.window.Window):
         self.player_image.anchor_x = 10
         self.player_image.anchor_y = 10
         self.set_size(globals.screenresx, globals.screenresy)
-        self.player_sprite = objects.Player(x=550, y=550)
+        self.player_sprite = objects.Player(x=550, y=550) # seb is gay
         self.player_sprite.set_id("Zestyy", 1)
         self.push_handlers(self.player_sprite)
         self.push_handlers(self.player_sprite.key_handler)
@@ -30,7 +30,6 @@ class game_window(pyglet.window.Window):
         for obj in self.game_objects:
             obj.update(dt)
             obj.check_bounds()
-            #obj.update(dt)
         # for i in self.squares:
         #     for j in i:
         #         if j.get_barrier_state():
@@ -45,7 +44,7 @@ class game_window(pyglet.window.Window):
         self.clear()
         self.bg_batch.draw()
         for i in globals.building_objects:
-            if isinstance(i, objects.Basic_Turret):
+            if i.get_building_type() == "Tracing turret":
                 i.get_tracer().draw()
             i.draw()
         self.player_sprite.draw()
@@ -110,12 +109,20 @@ class data_window(pyglet.window.Window):
         super().__init__()#self, game_window
 
         self.set_vsync(False)
-        self.obj_text = "objects here"
-        self.obj_label = pyglet.text.Label(self.obj_text,
-                                  font_name='Bebas Neue',
-                                  font_size=36,
-                                  x=self._width//2, y=self._height//2,
-                                  anchor_x='center', anchor_y='center')
+        self.mineral_text = "mineral count here"
+        self.mineral_label = pyglet.text.Label(self.mineral_text,
+                                               font_name='Bebas Neue',
+                                               font_size=36,
+                                               x=self._width//2, y=(self._height//2)+40,
+                                               anchor_x='center', anchor_y='center')
+
+        self.metal_text = "metal count here"
+        self.metal_label = pyglet.text.Label(self.mineral_text,
+                                               font_name='Bebas Neue',
+                                               font_size=36,
+                                               x=self._width//2, y=self._height//2,
+                                               anchor_x='center', anchor_y='center')
+
         self.selection_text = "selection of building here"
         self.selection_label = pyglet.text.Label(self.selection_text,
                                   font_name='Bebas Neue',
@@ -127,20 +134,23 @@ class data_window(pyglet.window.Window):
 
 
     def update(self, dt):
-        self.obj_text = ""
+        self.mineral_text = ""
         #print(building_objects)
         for i in globals.building_objects:
             i.update(dt)
-            # self.obj_text += str(i)
-        self.obj_text = "Mineral: " + str(round(globals.player1_lv1_res, 1))#ℤens
-        self.obj_label.text = self.obj_text
+            # self.mineral_text += str(i)
+        self.mineral_text = "Mineral: " + str(round(globals.player1_lv1_res, 1))#ℤens
+        self.mineral_label.text = self.mineral_text
+        self.metal_text = "Metal: " + str(round(globals.player1_lv2_res, 1))#ℤens
+        self.metal_label.text = self.metal_text
         self.selection_text_temp = str(game_window_run.player_sprite.get_select()).split("'")
         self.selection_text_temp = str((self.selection_text_temp[1])[8:])
         self.selection_text = "Selection: " + str(self.selection_text_temp)
         self.selection_label.text = self.selection_text
     def on_draw(self):
         self.clear()
-        self.obj_label.draw()
+        self.mineral_label.draw()
+        self.metal_label.draw()
         self.selection_label.draw()
 
 

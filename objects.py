@@ -22,6 +22,10 @@ turret_image = pyglet.image.load("Strat_UN Turret.png")
 turret_image.anchor_x = 10
 turret_image.anchor_y = 10
 
+refinery_image = pyglet.image.load("Refinery.png")
+refinery_image.anchor_x = 10
+refinery_image.anchor_y = 10
+
 #drill_ani = pyglet.resource.animation("Drill_animation.gif")
 
 #drill_frames = []
@@ -142,16 +146,27 @@ class Building(TileObject):
     def __init__(self, *args, **kwargs):
         super().__init__(img=building_placeholder_image, *args, **kwargs)
         self.health = 1000
+        self.building_type = "Null"
         self.owner_id = None
         self.owner_num = None
         self.name = None
         self.lv = 1
+
+    def death_check(self):
+        if self.health <= 0:
+            del globals.building_objects[globals.building_objects.index(self)]
+            print(globals.building_objects)
+            # self.x = -100000000
+            # self.y = -100000000
 
     def get_owner(self):
         return self.owner_num
 
     def get_name(self):
         return self.name
+
+    def get_building_type(self):
+        return self.building_type
 
     def set_owner(self, new_owner_id_set):
         self.owner_id = new_owner_id_set[0]
@@ -171,20 +186,22 @@ class Target(Building):
     def set_owner(self, *args, **kwargs):
         pass
 
+# Industry buildings
 class Drill(Building):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)#img=drill_image,
         self.image = drill_image
         self.color = (0, 0, 0)
         self.name = "Drill"
+        self.building_type = "Industry"
         self.mine_rate = secrets.choice([2.5, 2.75, 3, 3.25, 3.5])
         self.built = False
-        self.build_timer = 10.0
+        self.activation_timer = 10.0
 
     def update(self, dt):
         if not self.built:
-            self.build_timer -= dt
-            if self.build_timer <= 0:
+            self.activation_timer -= dt
+            if self.activation_timer <= 0:
                 self.image = drill_ani
                 # self.x -= 10
                 # self.y -= 10 # done because the anchor for position changes from the centre to bottom left corner
@@ -201,13 +218,43 @@ class Drill(Building):
     def upgrade(self):
         self.mine_rate *= 1.2
 
+class Refinery(Building):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)#img=drill_image,
+        self.image = refinery_image
+        #self.color = (0, 0, 0)
+        self.name = "Refinery"
+        self.building_type = "Industry"
+        self.process_rate = 0.75
+        self.built = False
+        self.activation_timer = 10.0
 
+    def update(self, dt):
+        if not self.built:
+            self.activation_timer -= dt
+            if self.activation_timer <= 0:
+                #self.image = drill_ani
+                # self.x -= 10
+                # self.y -= 10 # done because the anchor for position changes from the centre to bottom left corner
+                #self.color = (0, 255, 0)
+                self.built = True
+        else:
+            purified = self.process_rate * dt
+            # print(self.owner_num)
+            if self.owner_num == 1:
+                globals.player1_lv2_res += purified
+                globals.player1_lv1_res -= 2 * purified
+            if self.owner_num == 2:
+                globals.player2_lv1_res -= 2 * purified
+
+# Defense buildings
 class Basic_Turret(Building):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.image = turret_image
         self.name = "Turret"
+        self.building_type = "Tracing turret"
         self.fire_rate = 1.0
         self.targetx = 500
         self.targety = 500
@@ -216,20 +263,49 @@ class Basic_Turret(Building):
         self.damage = 50
         self.first_burst = True
         self.targeting = False
+        self.targeted = None
+
+    def fire(self):
+        self.targeted.hit(self.damage)
+        self.targeted.death_check()
 
     def update(self, dt):
-        for i in globals.building_objects:
-            if i.get_owner() != self.owner_num and self.targeting == False:
-                #print("found target" + str(i))
-                self.targetx = i.get_x()
-                self.targety = i.get_y()
-                if math.sqrt(((self.x - self.targetx)**2) + ((self.y - self.targety)**2)) <= 250:
-                    self.targeting = True
+        if self.targeted is None:
+            if self.trace_opacity < 1:
+                self.trace_opacity = 0
+            else:
+                self.trace_opacity -= (400 * dt)
+            self.tracer.opacity = self.trace_opacity
+        if self.targeted is not None:
+            try:
+                if globals.building_objects.index(self.targeted):
+                        self.targetx = self.targeted.get_x()
+                        self.targety = self.targeted.get_y()
+                        if math.sqrt(((self.x - self.targetx) ** 2) + ((self.y - self.targety) ** 2)) <= 250:
+                            self.targeting = True
+            except:
+                self.targeted = None
+                self.targeting = False
+                #self.tracer.opacity = 0
+        else:
+            for i in globals.building_objects:
+                if i.get_owner() != self.owner_num and self.targeting is False:
+                    #print("found target" + str(i))
+                    self.targetx = i.get_x()
+                    self.targety = i.get_y()
+                    if math.sqrt(((self.x - self.targetx)**2) + ((self.y - self.targety)**2)) <= 250:
+                        self.targeting = True
+                        self.targeted = i
+                    else:
+                        self.targeting = False
+                        self.targeted = None
         self.trace_opacity -= (400 * dt)
         if self.targeting:
             if self.trace_opacity < 1:
                 self.trace_opacity = 255
-                self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 2, color=(255, 0, 0))
+                if self.targeted is not None:
+                    self.fire()
+                    self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 2, color=(255, 0, 0))
             xdiff = self.targetx - self.x
             ydiff = self.y - self.targety
             if xdiff == 0 or ydiff == 0:
@@ -253,6 +329,7 @@ class Basic_Turret(Building):
                 self.first_burst = False
             #print(self.trace_opacity)
             self.tracer.opacity = self.trace_opacity
+
 
     def set_targetx(self, var):
         self.targetx = var
@@ -311,12 +388,19 @@ class Player(TileObject):
         super(Player, self).update(dt)
         if self.key_handler[key._1]:
             self.selection = Drill
+            self.select_text = "Drill"
 
         if self.key_handler[key._2]:
-            self.selection = Basic_Turret
+            self.selection = Refinery
+            self.select_text = "Refinery"
 
         if self.key_handler[key._3]:
+            self.selection = Basic_Turret
+            self.select_text = "Basic_turret"
+
+        if self.key_handler[key._0]:
             self.selection = Target
+            self.select_text = "Target"
 
         if self.key_handler[key.W]:
             if self.key_handler[key.W] and self.scounter == 0:
@@ -343,9 +427,18 @@ class Player(TileObject):
                 self.scounter += 1 * dt
 
         if self.key_handler[key.B] and self.bcounter == 0:  # create some sort of build function
-            globals.building_objects.append(self.selection(x=self.x, y=self.y))
-            print(globals.building_objects)
-            globals.building_objects[len(globals.building_objects)-1].set_owner(self.get_id())
+            costs = globals.building_costs[self.select_text]
+            if globals.player1_lv1_res >= costs[0] and\
+                globals.player1_lv2_res >= costs[1] and\
+                globals.player1_lv3_res >= costs[2]:
+
+                globals.player1_lv1_res -= (globals.building_costs[self.select_text])[0]
+                globals.player1_lv2_res -= (globals.building_costs[self.select_text])[1]
+                globals.player1_lv3_res -= (globals.building_costs[self.select_text])[2]
+
+                globals.building_objects.append(self.selection(x=self.x, y=self.y))
+                print(globals.building_objects)
+                globals.building_objects[len(globals.building_objects)-1].set_owner(self.get_id())
             #building_objects[len(player_list) - 1].color = (0, 0, 255) # NOTE: color function acts as a 'tint' added to sprites
             self.bcounter += 1 * dt
 
@@ -359,5 +452,5 @@ class Player(TileObject):
             self.velocity_x = 0
             self.velocity_y = 0
             self.scounter = 0 if self.scounter >= 0.25 else self.scounter
-        if self.bcounter >= 10:
-            self.bcounter = 0 if self.bcounter >= 10 else self.bcounter
+        if self.bcounter >= 3:
+            self.bcounter = 0 if self.bcounter >= 3 else self.bcounter
