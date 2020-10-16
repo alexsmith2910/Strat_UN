@@ -243,10 +243,11 @@ class Refinery(Building):
             # print(self.owner_num)
             if self.owner_num == 1:
                 globals.player1_lv2_res += purified
-                globals.player1_lv1_res -= 2 * purified
+                globals.player1_lv1_res -= 10 * purified
             if self.owner_num == 2:
-                globals.player2_lv1_res -= 2 * purified
+                globals.player2_lv1_res -= 10 * purified
 
+# Workshop
 # Defense buildings
 class Basic_Turret(Building):
 
