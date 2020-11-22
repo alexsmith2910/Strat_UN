@@ -334,6 +334,8 @@ class Troop(TileObject):
                     del self.cpath[0]
                     if self.cpath != []:
                         self.ctarget = self.cpath[0]
+                    else:
+                        self.speed = 0
             if self.firstpathstep:
                 print("angle: " + str(rawangle))
         
