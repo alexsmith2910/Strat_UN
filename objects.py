@@ -10,6 +10,10 @@ building_placeholder_image = pyglet.image.load("Placeholder-building.png")
 building_placeholder_image.anchor_x = 10
 building_placeholder_image.anchor_y = 10
 
+troop_placeholder_image = pyglet.image.load("Troop-placeholder.png")
+troop_placeholder_image.anchor_x = 10
+troop_placeholder_image.anchor_y = 10
+
 player_image = pyglet.image.load("Test-sprite.png")
 player_image.anchor_x = 10
 player_image.anchor_y = 10
@@ -18,13 +22,17 @@ drill_image = pyglet.image.load("Building test sprite-drill.png")
 drill_image.anchor_x = 10
 drill_image.anchor_y = 10
 
+refinery_image = pyglet.image.load("Refinery.png")
+refinery_image.anchor_x = 10
+refinery_image.anchor_y = 10
+
 turret_image = pyglet.image.load("Strat_UN Turret.png")
 turret_image.anchor_x = 10
 turret_image.anchor_y = 10
 
-refinery_image = pyglet.image.load("Refinery.png")
-refinery_image.anchor_x = 10
-refinery_image.anchor_y = 10
+dev_tank_image = pyglet.image.load("Dev-tank-sprite-60.png")
+dev_tank_image.anchor_x = 15
+dev_tank_image.anchor_y = 30
 
 #drill_ani = pyglet.resource.animation("Drill_animation.gif")
 
@@ -145,12 +153,26 @@ class TileBG(pyglet.shapes.Rectangle):
 class Building(TileObject):
     def __init__(self, *args, **kwargs):
         super().__init__(img=building_placeholder_image, *args, **kwargs)
-        self.health = 1000
+        self.max_health = 1000
+        self.health = self.max_health
         self.building_type = "Null"
         self.owner_id = None
         self.owner_num = None
         self.name = None
         self.lv = 1
+        self.armour = 0
+        self.max_shield = 0
+        self.shield = self.max_shield
+        self.regen = 0
+
+    def hit(self, damage):
+        pierced = damage * (1 - (self.armour / 100))
+        if self.shield > 0:
+            self.shield -= pierced
+            if self.shield < 0:
+                self.shield = 0
+        else:
+            self.health -= pierced
 
     def death_check(self):
         if self.health <= 0:
@@ -176,6 +198,168 @@ class Building(TileObject):
     def hit(self, damage):
         self.health -= damage
 
+class Troop(TileObject):
+    def __init__(self, *args, **kwargs):
+        super().__init__(img=troop_placeholder_image, *args, **kwargs)
+        self.max_health = 250
+        self.health = self.max_health
+        self.item_type = "Troop"
+        self.owner_id = None
+        self.owner_num = None
+        self.name = None
+        self.lv = 1
+        self.armour = 0
+        self.max_shield = 0
+        self.shield = self.max_shield
+        self.regen = 0
+        self.accel = 0.2
+        self.speed = 0
+        self.topspeed = 20
+        self.speed = 0
+        self.cpath = [] # c for 'current' path that it is using
+        self.ctarget = None # current target coords
+        self.firstpathstep = True
+
+    def hit(self, damage):
+        pierced = damage * (1-(self.armour/100))
+        if self.shield > 0:
+            self.shield -= pierced
+            if self.shield < 0:
+                self.shield = 0
+        else:
+            self.health -= pierced
+
+    def death_check(self):
+        if self.health <= 0:
+            del globals.troop_objects[globals.troop_objects.index(self)]
+            print(globals.troop_objects)
+            # self.x = -100000000
+            # self.y = -100000000
+
+    def get_astar_coords(self, x, y):
+        astarx = int(((x - 10)/20))
+        astary = int(((y - 10)/20))
+        return astarx, astary
+
+    def pathfind(self, target_coords=(20, 20)):
+        print("beginning pathfinding to: " + str(target_coords))
+        astar_start_coords = self.get_astar_coords(self.x, self.y)
+        astar_target_coords = self.get_astar_coords(target_coords[0], target_coords[1])
+        print("a*" + str(self.get_astar_coords(self.x, self.y)))
+        start = globals.astar_matrix.node(astar_start_coords[0], (astar_start_coords[1] - 1))
+        end = globals.astar_matrix.node(int(astar_target_coords[0]), int((astar_target_coords[1] - 1)))
+        # TODO: Choose wheter moving between diagonal water (technically connected at the corner) can be moved through.
+        # print("start: " + str(astar_start_coords[0] + (astar_start_coords[1])))
+        # print("end: " + str((astar_target_coords[0]) + ((astar_target_coords[1]))))
+        path, runs = globals.finder.find_path(start, end, globals.astar_matrix)
+        print("runs: " + str(runs))
+        counter = 0
+        for i in path:
+            self.cpath.append([])
+            print(i)
+            #print(path)
+            for j in i:
+                if j == 0:
+                    temp = (j * 20) + 10
+                else: #j == 1
+                    temp = (j * 20) + 10
+                self.cpath[counter].append(int(temp))
+            counter += 1
+        del self.cpath[0]
+        for i in self.cpath:
+            i[1] += 20
+        print(self.cpath)
+        print(globals.astar_matrix.grid_str(path=path, start=start, end=end))
+        self.ctarget = self.cpath[0]
+        globals.astar_matrix.cleanup()
+
+    def move(self, dt):
+        if self.ctarget != None:
+            if self.firstpathstep:
+                print("pathing to: " + str(self.ctarget))
+                self.firstpathstep = False
+            rawangle = None
+            if self.speed < self.topspeed:
+                self.speed += (self.accel * dt)
+            xdiff = self.ctarget[0] - self.x
+            ydiff = self.y - self.ctarget[1]
+            if xdiff == 0 or ydiff == 0:
+                if self.ctarget[0] > self.x and self.ctarget[1] == self.y:
+                    self.rotation = 90
+                elif self.ctarget[0] == self.x and self.ctarget[1] < self.y:
+                    self.rotation = 180
+                elif self.ctarget[0] < self.x and self.ctarget[1] == self.y:
+                    self.rotation = 270
+                elif self.ctarget[0] == self.x and self.ctarget[1] > self.y:
+                    self.rotation = 0
+            else:
+                rawangle = math.atan(ydiff / xdiff)
+            if (self.ctarget[0] < self.x and self.ctarget[1] > self.y) or (self.ctarget[0] < self.x and self.ctarget[1] < self.y):
+                self.rotation = 270 + math.degrees(rawangle)
+            elif (self.ctarget[0] > self.x and self.ctarget[1] > self.y) or (self.ctarget[0] > self.x and self.ctarget[1] < self.y):
+                self.rotation = 90 + math.degrees(rawangle)
+
+            if rawangle != None:
+                if self.x < self.ctarget[0] and self.y < self.ctarget[1]: #NE
+                    self.x += self.speed * math.cos(rawangle) * dt
+                    self.y -= self.speed * math.sin(rawangle) * dt
+                if self.x < self.ctarget[0] and self.y > self.ctarget[1]: #SE
+                    self.x += self.speed * math.cos(rawangle) * dt
+                    self.y -= self.speed * math.sin(rawangle) * dt
+                if self.x > self.ctarget[0] and self.y > self.ctarget[1]: #SW
+                    self.x -= self.speed * math.cos(rawangle) * dt
+                    self.y += self.speed * math.sin(rawangle) * dt
+                if self.x > self.ctarget[0] and self.y < self.ctarget[1]: #NW
+                    self.x -= self.speed * math.cos(rawangle) * dt
+                    self.y += self.speed * math.sin(rawangle) * dt
+
+            else:
+                if self.ctarget[0] > self.x and self.ctarget[1] == self.y:
+                    self.x += self.speed * dt
+                elif self.ctarget[0] == self.x and self.ctarget[1] < self.y:
+                    self.y -= self.speed * dt
+                elif self.ctarget[0] < self.x and self.ctarget[1] == self.y:
+                    self.x -= self.speed * dt
+                elif self.ctarget[0] == self.x and self.ctarget[1] > self.y:
+                    self.y += self.speed * dt
+
+            if math.sqrt(((self.x - self.ctarget[0]) ** 2) + ((self.y - self.ctarget[1]) ** 2)) <= 2:
+                self.x = self.ctarget[0]
+                self.y = self.ctarget[1]
+
+            if self.x == self.ctarget[0] and self.y == self.ctarget[1]:
+                self.firstpathstep = True
+                self.ctarget = None
+                if self.cpath != []:
+                    del self.cpath[0]
+                    if self.cpath != []:
+                        self.ctarget = self.cpath[0]
+            if self.firstpathstep:
+                print("angle: " + str(rawangle))
+        
+
+    def pathing_check(self):
+        pass
+
+    def update(self, dt):
+        self.move(dt)
+
+    def get_owner(self):
+        return self.owner_num
+
+    def get_name(self):
+        return self.name
+
+    def get_building_type(self):
+        return self.building_type
+
+    def set_owner(self, new_owner_id_set):
+        self.owner_id = new_owner_id_set[0]
+        self.owner_num = new_owner_id_set[1]
+        #print(self.owner)
+
+# Miscellaneous
+
 class Target(Building):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -184,6 +368,24 @@ class Target(Building):
         self.owner_num = -1
 
     def set_owner(self, *args, **kwargs):
+        pass
+
+# Static buildings
+
+class HQ(Building):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)#img=drill_image,
+        self.image = drill_image
+        self.color = (0, 0, 0)
+        self.name = "HQ"
+        self.building_type = "Static"
+        self.max_health = 100000
+        self.health = self.max_health
+        #self.mine_rate = secrets.choice([2.5, 2.75, 3, 3.25, 3.5])
+        #self.built = False
+        #self.activation_timer = 10.0
+
+    def update(self, dt):
         pass
 
 # Industry buildings
@@ -222,7 +424,7 @@ class Refinery(Building):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)#img=drill_image,
         self.image = refinery_image
-        #self.color = (0, 0, 0)
+        self.color = (0, 0, 0)
         self.name = "Refinery"
         self.building_type = "Industry"
         self.process_rate = 0.75
@@ -236,7 +438,7 @@ class Refinery(Building):
                 #self.image = drill_ani
                 # self.x -= 10
                 # self.y -= 10 # done because the anchor for position changes from the centre to bottom left corner
-                #self.color = (0, 255, 0)
+                self.color = (0, 255, 0)
                 self.built = True
         else:
             purified = self.process_rate * dt
@@ -247,7 +449,59 @@ class Refinery(Building):
             if self.owner_num == 2:
                 globals.player2_lv1_res -= 10 * purified
 
+
+class Oil_Rig(Building):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)#img=drill_image,
+        #self.image = refinery_image
+        self.color = (0, 0, 0)
+        self.name = "Oil Rig"
+        self.building_type = "Industry"
+        self.process_rate = 0.75
+        self.built = False
+        self.activation_timer = 10.0
+
+    def update(self, dt):
+        if not self.built:
+            self.activation_timer -= dt
+            if self.activation_timer <= 0:
+                #self.image = drill_ani
+                # self.x -= 10
+                # self.y -= 10 # done because the anchor for position changes from the centre to bottom left corner
+                self.color = (0, 255, 0)
+                self.built = True
+        else:
+            pumped = self.process_rate * dt
+            # print(self.owner_num)
+            if self.owner_num == 1:
+                globals.player1_lv3_res += pumped
+            #     globals.player1_lv1_res -= 10 * pumped
+            # if self.owner_num == 2:
+            #     globals.player2_lv1_res -= 10 * pumped
+            if secrets.randbelow(2) == 0:
+                self.process_rate -= dt * 0.3 # simulation of concentration of oil to be pumped changing
+                if self.process_rate < 0.5:
+                    self.process_rate == 0.5
+            else:
+                self.process_rate += dt * 0.3
+                if self.process_rate < 1.5:
+                    self.process_rate == 1.5
+
 # Workshop
+
+class Workshop(Building):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)#img=drill_image,
+        self.image = refinery_image
+        self.color = (0, 0, 0)
+        self.name = "Workshop"
+        self.building_type = "Industry"
+        self.process_rate = 0.75
+        self.built = False
+        self.activation_timer = 10.0
+
+
+
 # Defense buildings
 class Basic_Turret(Building):
 
@@ -341,6 +595,48 @@ class Basic_Turret(Building):
     def get_tracer(self):
         return self.tracer
 
+#Troops
+
+class Dev_Tank(Troop):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.image = dev_tank_image
+        self.name = "Dev_Tank"
+        self.building_type = "Tracing turret"
+        self.fire_rate = 1.0
+        self.targetx = 500
+        self.targety = 500
+        self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 0, color=(50, 225, 30))
+        self.trace_opacity = 255
+        self.damage = 50
+        self.lv = 1
+        self.max_health = 2500
+        self.health = self.max_health
+        self.accel = 0.5
+        self.topspeed = 10
+        self.speed = 0
+        self.armour = 40
+        self.max_shield = 1500
+        self.shield = self.max_shield
+        self.regen = 1
+        self.first_burst = True
+        self.targeting = False
+        self.targeted = None
+
+    def fire(self):
+        self.targeted.hit(self.damage)
+        self.targeted.death_check()
+
+    def set_targetx(self, var):
+        self.targetx = var
+
+    def set_targety(self, var):
+        self.targety = var
+
+    def get_tracer(self):
+        return self.tracer
+
 
 class Player(TileObject):
     """class for generating a object for the player to control"""
@@ -397,11 +693,22 @@ class Player(TileObject):
 
         if self.key_handler[key._3]:
             self.selection = Basic_Turret
-            self.select_text = "Basic_turret"
+            self.select_text = "Basic_Turret"
+
+        if self.key_handler[key._4]:
+            self.selection = Oil_Rig
+            self.select_text = "Oil_Rig"
 
         if self.key_handler[key._0]:
             self.selection = Target
             self.select_text = "Target"
+            self.bcounter += 1 * dt
+
+        if self.key_handler[key.NUM_0] and self.bcounter == 0:
+            for i in globals.troop_objects:
+                if i.get_owner() == 1:
+                    i.pathfind((self.x, self.y))
+            self.bcounter += 1 * dt
 
         if self.key_handler[key.W]:
             if self.key_handler[key.W] and self.scounter == 0:
