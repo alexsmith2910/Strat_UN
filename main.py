@@ -37,8 +37,27 @@ class game_window(pyglet.window.Window):
         self.input_text = ''
         self.firstt = True  # this serves to avoid the first 't' used to activate the typing,
         # not to get stored as first character of the input_text.
+        self.main_key_handler = key.KeyStateHandler()
+        self.gen_overlay()
+
+        # Data parts for overlay
+        self.show_overlay = False
+        self.ol_counter = 0
+
+    def gen_overlay(self):
+        self.overlay_bg = pyglet.shapes.Rectangle(0, 0, 500, 400, (0, 0, 0), batch=globals.overlay_batch)
+        self.overlay_bg_frameh = pyglet.shapes.Line(0, 400, 500, 400, 1, (255, 255, 255), batch=globals.overlay_batch)
+        self.overlay_bg_framev = pyglet.shapes.Line(500, 0, 500, 400, 1, (255, 255, 255), batch=globals.overlay_batch)
+        self.mineral_text = "Mineral text here"
+        self.overlay_mineral_label = pyglet.text.Label(self.mineral_text,
+                                               font_name='Bebas Neue',
+                                               font_size=12,
+                                               x=5, y=380, batch=globals.overlay_batch)
+                                               #anchor_x='center', anchor_y='center'
+        self.overlay_bg.opacity = 150
 
     def update(self, dt):
+        #super(game_window, self).update(dt)
         #print(self.game_objects)
         for obj in self.game_objects:
             obj.update(dt)
@@ -47,18 +66,28 @@ class game_window(pyglet.window.Window):
             i.update(dt)
         for i in globals.troop_objects:
             i.update(dt)
-        # for i in self.squares:
-        #     for j in i:
-        #         if j.get_barrier_state():
-        #             tempx = j.x + 10
-        #             tempy = j.y + 10
-        #         if j.get_barrier_state() and tempx - self.player_sprite.get_x() == 0.0 and tempy - self.player_sprite.get_y() == 0:
-        #             for i in self.squares:
-        #                 for j in i:
-        #                     j.color = (255, 0, 0)
 
+        # Overlay editing
+        self.mineral_text = "Mineral: " + str(round(globals.player1_lv1_res, 1))  # ℤens
+        self.overlay_mineral_label.text = self.mineral_text # TODO: continue with overlay to replace data window
+        # self.metal_text = "Metal: " + str(round(globals.player1_lv2_res, 1))  # ℤens
+        # self.metal_label.text = self.metal_text
+        # self.selection_text_temp = str(game_window_run.player_sprite.get_select()).split("'")
+        # self.selection_text_temp = str((self.selection_text_temp[1])[8:])
+        # self.selection_text = "Selection: " + str(self.selection_text_temp)
+        # self.selection_label.text = self.selection_text
 
-    # @staticmethod
+        # if self.main_key_handler[key.ENTER] and self.ol_counter == 0:
+        #     self.show_overlay = not(self.show_overlay)
+        #     print(self.show_overlay)
+        #     self.ol_counter += dt
+
+        if self.ol_counter > 0:
+            self.ol_counter += dt
+
+        if self.ol_counter >= 1:
+            self.ol_counter = 0 if self.ol_counter >= 1 else self.ol_counter
+
     def on_text(self, text):
         if self.firstt == True and self.input_text == 't':
             self.input_text = ''
@@ -77,7 +106,8 @@ class game_window(pyglet.window.Window):
                     if i.get_building_type() == "Drill":
                         i.image = animations.animations.DUA_ani
                         objects.Drill.image = animations.animations.DUA_ani
-            # self.pop_handlers()
+        elif symbol == key.SLASH:
+            self.show_overlay = not(self.show_overlay)
             # Control.handleraltered = False
         elif symbol == key.BACKSPACE:
             self.input_text = self.input_text[:-1]
@@ -93,8 +123,12 @@ class game_window(pyglet.window.Window):
                 i.get_tracer().draw()
             i.draw()
         for i in globals.troop_objects:
+            if i.get_weapon_tracing():
+                i.get_tracer().draw()
             i.draw()
         self.player_sprite.draw()
+        if self.show_overlay:
+            globals.overlay_batch.draw()
         self.fps_display.draw()
 
     def get_game_objects(self):

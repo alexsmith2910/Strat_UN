@@ -154,3 +154,14 @@
 #     if isinstance(obj, objects.Basic_Turret):
 #         obj.set_targetx(self.player_sprite.get_x())
 #         obj.set_targety(self.player_sprite.get_y())
+
+# for i in self.squares:
+#     for j in i:
+#         if j.get_barrier_state():
+#             tempx = j.x + 10
+#             tempy = j.y + 10
+#         if j.get_barrier_state() and tempx - self.player_sprite.get_x() == 0.0 and tempy - self.player_sprite.get_y() == 0:
+#             for i in self.squares:
+#                 for j in i:
+#                     j.color = (255, 0, 0)
+

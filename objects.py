@@ -164,14 +164,29 @@ class Building(TileObject):
         self.max_shield = 0
         self.shield = self.max_shield
         self.regen = 0
+        self.immobilizer = False
+        self.immobilizer_strength = None
+        self.dot = False
+        self.dot_strength = None
+        self.damage = 50
+        self.first_burst = True
+        self.targeting = False
+        self.targeted = None
+        self.fire_rate = 1.0
 
-    def hit(self, damage):
+        self.dot_damage = 0
+
+    def hit(self, damage, imm_strength=None, dot_strength=None):
         pierced = damage * (1 - (self.armour / 100))
         if self.shield > 0:
             self.shield -= pierced
             if self.shield < 0:
                 self.shield = 0
-        else:
+
+        if dot_strength != None:
+            self.dot_damage += dot_strength
+
+        elif self.shield <= 0:
             self.health -= pierced
 
     def death_check(self):
@@ -201,17 +216,20 @@ class Building(TileObject):
 class Troop(TileObject):
     def __init__(self, *args, **kwargs):
         super().__init__(img=troop_placeholder_image, *args, **kwargs)
-        self.max_health = 250
-        self.health = self.max_health
-        self.item_type = "Troop"
+        # General Identifiers
+        self.troop_type = "Troop"
         self.owner_id = None
         self.owner_num = None
         self.name = None
         self.lv = 1
+        # Defence characteristics
+        self.max_health = 250
+        self.health = self.max_health
         self.armour = 0
         self.max_shield = 0
         self.shield = self.max_shield
         self.regen = 0
+        # Movement and pathfinding characteristics
         self.accel = 0.2
         self.speed = 0
         self.topspeed = 20
@@ -219,15 +237,48 @@ class Troop(TileObject):
         self.cpath = [] # c for 'current' path that it is using
         self.ctarget = None # current target coords
         self.firstpathstep = True
+        # Weapon characteristics
+        self.immobilizer = False
+        self.immobilizer_strength = None
+        self.dot = False
+        self.dot_strength = None
+        self.target_type_allowed = ("Troop", "Preferred")
+        self.target_type = None #Building or troop
+        self.damage = 50
+        self.range = 50
+        self.fire_rate = 100 # num/255 per second
+        self.first_burst = True
+        self.targeting = False
+        self.targeted = None
+        self.targetx = None
+        self.targety = None
+        self.tracer_colour = (255, 255, 255)
+        self.tracer = pyglet.shapes.Line(0, 0, 0, 0, 0, color=self.tracer_colour)
+        self.trace_opacity = 255
+        self.has_tracer = False
+        self.immobilizer = False
+        self.immobilizer_strength = None
+        self.dot = False
+        self.dot_strength = None
 
-    def hit(self, damage):
-        pierced = damage * (1-(self.armour/100))
+        self.dot_damage = 0
+
+    def hit(self, damage, imm_strength=None, dot_strength=None):
+        pierced = damage * (1 - (self.armour / 100))
         if self.shield > 0:
             self.shield -= pierced
             if self.shield < 0:
                 self.shield = 0
-        else:
-            self.health -= pierced
+
+        if imm_strength != None:
+            temp = self.speed
+            self.speed -= (self.speed * imm_strength)
+
+        if dot_strength != None:
+            self.dot_damage += dot_strength
+
+        elif self.shield <= 0:
+            self.health -= damage
 
     def death_check(self):
         if self.health <= 0:
@@ -242,15 +293,14 @@ class Troop(TileObject):
         return astarx, astary
 
     def pathfind(self, target_coords=(20, 20)):
+        self.cpath = []
         print("beginning pathfinding to: " + str(target_coords))
         astar_start_coords = self.get_astar_coords(self.x, self.y)
         astar_target_coords = self.get_astar_coords(target_coords[0], target_coords[1])
         print("a*" + str(self.get_astar_coords(self.x, self.y)))
         start = globals.astar_matrix.node(astar_start_coords[0], (astar_start_coords[1] - 1))
         end = globals.astar_matrix.node(int(astar_target_coords[0]), int((astar_target_coords[1] - 1)))
-        # TODO: Choose wheter moving between diagonal water (technically connected at the corner) can be moved through.
-        # print("start: " + str(astar_start_coords[0] + (astar_start_coords[1])))
-        # print("end: " + str((astar_target_coords[0]) + ((astar_target_coords[1]))))
+        # TODO: Choose whether moving between diagonal water (technically connected at the corner) can be moved through.
         path, runs = globals.finder.find_path(start, end, globals.astar_matrix)
         print("runs: " + str(runs))
         counter = 0
@@ -338,13 +388,18 @@ class Troop(TileObject):
                         self.speed = 0
             if self.firstpathstep:
                 print("angle: " + str(rawangle))
-        
+
+
 
     def pathing_check(self):
         pass
 
+    def get_weapon_tracing(self):
+        return self.has_tracer
+
     def update(self, dt):
         self.move(dt)
+        self.shoot(dt)
 
     def get_owner(self):
         return self.owner_num
@@ -359,6 +414,134 @@ class Troop(TileObject):
         self.owner_id = new_owner_id_set[0]
         self.owner_num = new_owner_id_set[1]
         #print(self.owner)
+
+    def fire(self):
+        self.targeted.hit(self.damage)
+        self.targeted.death_check()
+
+    def get_tracer(self):
+        return self.tracer
+
+    def shoot(self, dt):
+        if self.trace_opacity > 0:
+            self.trace_opacity -= (self.fire_rate * dt)
+            self.tracer.opacity = self.trace_opacity
+        if self.targeted is None:
+            if self.trace_opacity < 1:
+                self.trace_opacity = 0
+            else:
+                self.trace_opacity -= (100 * dt)
+            self.tracer.opacity = self.trace_opacity
+        if self.targeted is not None:
+            try:
+                if globals.building_objects.index(self.targeted):
+                        self.targetx = self.targeted.get_x()
+                        self.targety = self.targeted.get_y()
+                        if math.sqrt(((self.x - self.targetx) ** 2) + ((self.y - self.targety) ** 2)) <= self.range:
+                            self.targeting = True
+            except:
+                self.targeted = None
+                self.targeting = False
+                #self.tracer.opacity = 0
+        else:
+            if self.target_type_allowed[0] == "Building":
+                for i in globals.building_objects:
+                    if i.get_owner() != self.owner_num and self.targeting is False:
+                        #print("found target" + str(i))
+                        self.targetx = i.get_x()
+                        self.targety = i.get_y()
+                        if math.sqrt(((self.x - self.targetx)**2) + ((self.y - self.targety)**2)) <= self.range:
+                            self.targeting = True
+                            self.targeted = i
+                            self.cpath = []
+                        else:
+                            self.targeting = False
+                            self.targeted = None
+
+            elif self.target_type_allowed[0] == "Troop":
+                for i in globals.troop_objects:
+                    if i.get_owner() != self.owner_num and self.targeting is False:
+                        #print("found target" + str(i))
+                        self.targetx = i.get_x()
+                        self.targety = i.get_y()
+                        if math.sqrt(((self.x - self.targetx)**2) + ((self.y - self.targety)**2)) <= self.range:
+                            self.targeting = True
+                            self.targeted = i
+                            self.cpath = []
+                        else:
+                            self.targeting = False
+                            self.targeted = None
+
+            if self.target_type_allowed[0] == "Troop" and self.target_type_allowed[1] == "Preferred" and not self.targeting:
+                for i in globals.building_objects:
+                    if i.get_owner() != self.owner_num and self.targeting is False:
+                        #print("found target" + str(i))
+                        self.targetx = i.get_x()
+                        self.targety = i.get_y()
+                        if math.sqrt(((self.x - self.targetx)**2) + ((self.y - self.targety)**2)) <= self.range:
+                            self.targeting = True
+                            self.targeted = i
+                            self.cpath = []
+                        else:
+                            self.targeting = False
+                            self.targeted = None
+
+            if self.target_type_allowed[0] == "Building" and self.target_type_allowed[1] == "Preferred" and not self.targeting:
+                for i in globals.troop_objects:
+                    if i.get_owner() != self.owner_num and self.targeting is False:
+                        #print("found target" + str(i))
+                        self.targetx = i.get_x()
+                        self.targety = i.get_y()
+                        if math.sqrt(((self.x - self.targetx)**2) + ((self.y - self.targety)**2)) <= self.range:
+                            self.targeting = True
+                            self.targeted = i
+                            self.cpath = []
+                        else:
+                            self.targeting = False
+                            self.targeted = None
+
+        self.trace_opacity -= (self.fire_rate * dt)
+        if self.targeting:
+            if self.trace_opacity < 1 and self.ctarget == None:
+                self.trace_opacity = 255
+                self.targeted.hit(self.damage)
+                if self.targeted is not None:
+                    self.fire()
+                    self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 2, color=self.tracer_colour)
+            if self.ctarget == None:
+                xdiff = self.targetx - self.x
+                ydiff = self.y - self.targety
+                if xdiff == 0 or ydiff == 0:
+                    if self.targetx > self.x and self.targety == self.y:
+                        self.rotation = 90
+                    elif self.targetx == self.x and self.targety < self.y:
+                        self.rotation = 180
+                    elif self.targetx < self.x and self.targety == self.y:
+                        self.rotation = 270
+                    elif self.targetx == self.x and self.targety > self.y:
+                        self.rotation = 0
+                else:
+                    rawangle = math.atan(ydiff/xdiff)
+                if (self.targetx < self.x and self.targety > self.y) or (self.targetx < self.x and self.targety < self.y):
+                    self.rotation = 270 + math.degrees(rawangle)
+                elif (self.targetx > self.x and self.targety > self.y) or (self.targetx > self.x and self.targety < self.y):
+                    self.rotation = 90 + math.degrees(rawangle)
+
+                if self.first_burst:
+                    self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 2, color=self.tracer_colour)
+                    self.first_burst = False
+                #print(self.trace_opacity)
+                self.tracer.opacity = self.trace_opacity
+
+
+    def set_targetx(self, var):
+        self.targetx = var
+
+    def set_targety(self, var):
+        self.targety = var
+
+    def get_tracer(self):
+        return self.tracer
 
 # Miscellaneous
 
@@ -605,13 +788,16 @@ class Dev_Tank(Troop):
         super().__init__(*args, **kwargs)
         self.image = dev_tank_image
         self.name = "Dev_Tank"
-        self.building_type = "Tracing turret"
-        self.fire_rate = 1.0
+        self.troop_type = "EMP Medium Tank"
+        self.fire_rate = 150
         self.targetx = 500
         self.targety = 500
-        self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 0, color=(50, 225, 30))
+        self.tracer_colour = (129, 236, 236)
+        self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 0, color=(129, 236, 236))
         self.trace_opacity = 255
+        self.has_tracer = True
         self.damage = 50
+        self.range = 150
         self.lv = 1
         self.max_health = 2500
         self.health = self.max_health
@@ -626,6 +812,9 @@ class Dev_Tank(Troop):
         self.targeting = False
         self.targeted = None
 
+        self.immobilizer = True
+        self.immobilizer_strength = 0.1
+
     def fire(self):
         self.targeted.hit(self.damage)
         self.targeted.death_check()
@@ -635,9 +824,6 @@ class Dev_Tank(Troop):
 
     def set_targety(self, var):
         self.targety = var
-
-    def get_tracer(self):
-        return self.tracer
 
 
 class Player(TileObject):
@@ -651,6 +837,8 @@ class Player(TileObject):
         self.key_handler = key.KeyStateHandler()
         self.scounter = 0
         self.bcounter = 0
+        self.call_counter = 0
+        self.ol_counter = 0
         self.selection = Drill
         self.select_text = "Drill"
         globals.player_list.append(self)
@@ -706,11 +894,11 @@ class Player(TileObject):
             self.select_text = "Target"
             self.bcounter += 1 * dt
 
-        if self.key_handler[key.NUM_0] and self.bcounter == 0:
+        if self.key_handler[key.EQUAL] and self.call_counter == 0:
             for i in globals.troop_objects:
                 if i.get_owner() == 1:
                     i.pathfind((self.x, self.y))
-            self.bcounter += 1 * dt
+            self.call_counter += 1 * dt
 
         if self.key_handler[key.W]:
             if self.key_handler[key.W] and self.scounter == 0:
@@ -750,13 +938,16 @@ class Player(TileObject):
                 print(globals.building_objects)
                 globals.building_objects[len(globals.building_objects)-1].set_owner(self.get_id())
             #building_objects[len(player_list) - 1].color = (0, 0, 255) # NOTE: color function acts as a 'tint' added to sprites
-            self.bcounter += 1 * dt
+            self.bcounter += dt
 
         if self.bcounter > 0:
-            self.bcounter += 1 * dt
+            self.bcounter += dt
+
+        if self.call_counter > 0:
+            self.call_counter += dt
 
         if self.scounter > 0:
-            self.scounter += 1 * dt
+            self.scounter += dt
 
         if self.scounter >= 0.25:
             self.velocity_x = 0
@@ -764,3 +955,7 @@ class Player(TileObject):
             self.scounter = 0 if self.scounter >= 0.25 else self.scounter
         if self.bcounter >= 3:
             self.bcounter = 0 if self.bcounter >= 3 else self.bcounter
+        if self.call_counter >= 5:
+            self.call_counter = 0 if self.bcounter >= 5 else self.call_counter
+        if self.ol_counter >= 1:
+            self.ol_counter = 0 if self.bcounter >= 5 else self.ol_counter
