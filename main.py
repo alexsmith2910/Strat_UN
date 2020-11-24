@@ -138,6 +138,10 @@ class game_window(pyglet.window.Window):
         elif symbol == key.SLASH:
             self.show_overlay = not(self.show_overlay)
             # Control.handleraltered = False
+        elif symbol == key.BACKSLASH:
+            for i in globals.troop_objects:
+                i.auto_targeting = not i.auto_targeting
+                print("auto targeting toggled.")
         elif symbol == key.BACKSPACE:
             self.input_text = self.input_text[:-1]
             # Labels.playername_label.input_text = Typein.input_text

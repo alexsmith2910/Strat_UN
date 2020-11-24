@@ -164,14 +164,15 @@ class Building(TileObject):
         self.max_shield = 0
         self.shield = self.max_shield
         self.regen = 0
-        self.immobilizer = False
-        self.immobilizer_strength = None
-        self.dot = False
-        self.dot_strength = None
+        self.range = -1
         self.damage = 50
         self.first_burst = True
         self.targeting = False
         self.targeted = None
+        self.immobilizer = False
+        self.immobilizer_strength = None
+        self.dot = False
+        self.dot_strength = None
         self.fire_rate = 1.0
 
         self.dot_damage = 0
@@ -204,6 +205,9 @@ class Building(TileObject):
 
     def get_building_type(self):
         return self.building_type
+
+    def get_range(self):
+        return self.range
 
     def set_owner(self, new_owner_id_set):
         self.owner_id = new_owner_id_set[0]
@@ -238,10 +242,7 @@ class Troop(TileObject):
         self.ctarget = None # current target coords
         self.firstpathstep = True
         # Weapon characteristics
-        self.immobilizer = False
-        self.immobilizer_strength = None
-        self.dot = False
-        self.dot_strength = None
+        self.auto_targeting = False
         self.target_type_allowed = ("Troop", "Preferred")
         self.target_type = None #Building or troop
         self.damage = 50
@@ -292,8 +293,114 @@ class Troop(TileObject):
         astary = int(((y - 10)/20))
         return astarx, astary
 
-    def pathfind(self, target_coords=(20, 20)):
+    def auto_target(self):
+        found = False
+        if self.target_type_allowed[0] == "Building":
+            for i in globals.building_objects:
+                if i.get_owner() != self.owner_num and i.get_range() < self.range:
+                    # print("found target" + str(i))
+                    self.pathfind((i.get_x(), i.get_y()))
+                    break
+                    # self.targeting = True
+                    # self.targeted = i
+                    # self.cpath = []
+                # else:
+                #     self.targeting = False
+                #     self.targeted = None
+            if self.targeted == None:
+                for i in globals.building_objects:
+                    if i.get_owner() != self.owner_num:
+                        # print("found target" + str(i))
+                        self.pathfind((i.get_x(), i.get_y()))
+                        break
+                        # self.targeting = True
+                        # self.targeted = i
+                        # self.cpath = []
+                    # else:
+                    #     self.targeting = False
+                    #     self.targeted = None
+
+        elif self.target_type_allowed[0] == "Troop":
+            for i in globals.troop_objects:
+                if i.get_owner() != self.owner_num and i.get_range() < self.range:
+                    # print("found target" + str(i))
+                    self.pathfind((i.get_x(), i.get_y()))
+                    break
+                    # self.targeting = True
+                    # self.targeted = i
+                    # self.cpath = []
+                # else:
+                #     self.targeting = False
+                #     self.targeted = None
+            if self.targeted == None:
+                for i in globals.troop_objects:
+                    if i.get_owner() != self.owner_num:
+                        # print("found target" + str(i))
+                        self.pathfind((i.get_x(), i.get_y()))
+                        break
+                        # self.targeting = True
+                        # self.targeted = i
+                        # self.cpath = []
+                    # else:
+                    #     self.targeting = False
+                    #     self.targeted = None
+
+        if self.target_type_allowed[0] == "Troop" and \
+                self.target_type_allowed[1] == "Preferred" and not self.targeting:
+            for i in globals.building_objects:
+                if i.get_owner() != self.owner_num and i.get_range() < self.range:
+                    # print("found target" + str(i))
+                    self.pathfind((i.get_x(), i.get_y()))
+                    break
+                    # self.targeting = True
+                    # self.targeted = i
+                    # self.cpath = []
+                # else:
+                #     self.targeting = False
+                #     self.targeted = None
+            if self.targeted == None:
+                for i in globals.building_objects:
+                    if i.get_owner() != self.owner_num:
+                        # print("found target" + str(i))
+                        self.pathfind((i.get_x(), i.get_y()))
+                        break
+                        # self.targeting = True
+                        # self.targeted = i
+                        # self.cpath = []
+                    # else:
+                    #     self.targeting = False
+                    #     self.targeted = None
+
+        if self.target_type_allowed[0] == "Building" and \
+                self.target_type_allowed[1] == "Preferred" and not self.targeting:
+            for i in globals.troop_objects:
+                if i.get_owner() != self.owner_num and i.get_range() < self.range:
+                    # print("found target" + str(i))
+                    self.pathfind((i.get_x(), i.get_y()))
+                    break
+                    # self.targeting = True
+                    # self.targeted = i
+                    # self.cpath = []
+                # else:
+                #     self.targeting = False
+                #     self.targeted = None
+            if self.targeted == None:
+                for i in globals.troop_objects:
+                    if i.get_owner() != self.owner_num:
+                        # print("found target" + str(i))
+                        self.pathfind((i.get_x(), i.get_y()))
+                        break
+                        # self.targeting = True
+                        # self.targeted = i
+                        # self.cpath = []
+                    # else:
+                    #     self.targeting = False
+                    #     self.targeted = None
+
+
+    def pathfind(self, target_coords=(550, 550)):
         self.cpath = []
+        self.ctarget = None
         print("beginning pathfinding to: " + str(target_coords))
         astar_start_coords = self.get_astar_coords(self.x, self.y)
         astar_target_coords = self.get_astar_coords(target_coords[0], target_coords[1])
@@ -399,6 +506,8 @@ class Troop(TileObject):
 
     def update(self, dt):
         self.move(dt)
+        if not self.targeting and self.auto_targeting and self.ctarget == None:
+            self.auto_target()
         self.shoot(dt)
 
     def get_owner(self):
@@ -964,6 +1073,6 @@ class Player(TileObject):
         if self.bcounter >= 3:
             self.bcounter = 0 if self.bcounter >= 3 else self.bcounter
         if self.call_counter >= 5:
-            self.call_counter = 0 if self.bcounter >= 5 else self.call_counter
+            self.call_counter = 0 if self.call_counter >= 5 else self.call_counter
         if self.ol_counter >= 1:
-            self.ol_counter = 0 if self.bcounter >= 5 else self.ol_counter
+            self.ol_counter = 0 if self.ol_ounter >= 5 else self.ol_counter
