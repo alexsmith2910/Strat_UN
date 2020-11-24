@@ -582,6 +582,7 @@ class Drill(Building):
         self.name = "Drill"
         self.building_type = "Industry"
         self.mine_rate = secrets.choice([2.5, 2.75, 3, 3.25, 3.5])
+        globals.player1_lv1_gen += self.mine_rate
         self.built = False
         self.activation_timer = 10.0
 
@@ -613,6 +614,8 @@ class Refinery(Building):
         self.name = "Refinery"
         self.building_type = "Industry"
         self.process_rate = 0.75
+        globals.player1_lv1_gen -= (10 * self.process_rate)
+        globals.player1_lv2_gen += self.process_rate
         self.built = False
         self.activation_timer = 10.0
 
@@ -643,6 +646,8 @@ class Oil_Rig(Building):
         self.name = "Oil Rig"
         self.building_type = "Industry"
         self.process_rate = 0.75
+        self.prev_process_rate = self.process_rate
+        globals.player1_lv3_gen += self.process_rate
         self.built = False
         self.activation_timer = 10.0
 
@@ -656,6 +661,7 @@ class Oil_Rig(Building):
                 self.color = (0, 255, 0)
                 self.built = True
         else:
+            self.prev_process_rate = self.process_rate
             pumped = self.process_rate * dt
             # print(self.owner_num)
             if self.owner_num == 1:
@@ -671,6 +677,8 @@ class Oil_Rig(Building):
                 self.process_rate += dt * 0.3
                 if self.process_rate < 1.5:
                     self.process_rate == 1.5
+            globals.player1_lv3_gen -= self.prev_process_rate
+            globals.player1_lv3_gen += self.process_rate
 
 # Workshop
 

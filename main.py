@@ -10,6 +10,9 @@ import objects
 import animations
 import globals
 
+pyglet.font.add_file("BebasNeue-Regular.otf")
+# bebas_neue = pyglet.font.load("Bebas Neue")
+
 from pathfinding.core.diagonal_movement import DiagonalMovement
 from pathfinding.core.grid import Grid
 from pathfinding.finder.a_star import AStarFinder
@@ -44,17 +47,40 @@ class game_window(pyglet.window.Window):
         self.show_overlay = False
         self.ol_counter = 0
 
-    def gen_overlay(self):
-        self.overlay_bg = pyglet.shapes.Rectangle(0, 0, 500, 400, (0, 0, 0), batch=globals.overlay_batch)
-        self.overlay_bg_frameh = pyglet.shapes.Line(0, 400, 500, 400, 1, (255, 255, 255), batch=globals.overlay_batch)
-        self.overlay_bg_framev = pyglet.shapes.Line(500, 0, 500, 400, 1, (255, 255, 255), batch=globals.overlay_batch)
+    def gen_overlay(self, xres = globals.screenresx, yres = globals.screenresy):
+        self.overlay_bg = pyglet.shapes.Rectangle(450, 0, 500, 300, (0, 0, 0), batch=globals.overlay_batch)
+        self.overlay_bg.opacity = 150
+        self.overlay_bg_frameh = pyglet.shapes.Line(450, 300, 950, 300, 1, (255, 255, 255), batch=globals.overlay_batch)
+        self.overlay_bg_framev1 = pyglet.shapes.Line(450, 0, 450, 300, 1, (255, 255, 255), batch=globals.overlay_batch)
+        self.overlay_bg_framev2 = pyglet.shapes.Line(950, 0, 950, 300, 1, (255, 255, 255), batch=globals.overlay_batch)
         self.mineral_text = "Mineral text here"
+        self.metal_text = "Metal text here"
+        self.oil_text = "Oil text here"
+        self.selection_text = "Selection text here"
+        self.clickable_text = ""
+        self.clickable_text_temp = ""
         self.overlay_mineral_label = pyglet.text.Label(self.mineral_text,
                                                font_name='Bebas Neue',
-                                               font_size=12,
-                                               x=5, y=380, batch=globals.overlay_batch)
+                                               font_size=15,
+                                               x=455, y=280, batch=globals.overlay_batch)
+        self.overlay_metal_label = pyglet.text.Label(self.metal_text,
+                                                       font_name='Bebas Neue',
+                                                       font_size=15,
+                                                       x=455, y=260, batch=globals.overlay_batch)
+        self.overlay_oil_label = pyglet.text.Label(self.oil_text,
+                                                       font_name='Bebas Neue',
+                                                       font_size=15,
+                                                       x=455, y=240, batch=globals.overlay_batch)
+        self.overlay_selection_label = pyglet.text.Label(self.selection_text,
+                                                   font_name='Bebas Neue',
+                                                   font_size=15,
+                                                   x=455, y=220, batch=globals.overlay_batch)
+        self.overlay_clickable_label = pyglet.text.Label(self.clickable_text,
+                                                         font_name='Bebas Neue',
+                                                         font_size=15,
+                                                         x=455, y=200, batch=globals.overlay_batch)
                                                #anchor_x='center', anchor_y='center'
-        self.overlay_bg.opacity = 150
+
 
     def update(self, dt):
         #super(game_window, self).update(dt)
@@ -68,15 +94,18 @@ class game_window(pyglet.window.Window):
             i.update(dt)
 
         # Overlay editing
-        self.mineral_text = "Mineral: " + str(round(globals.player1_lv1_res, 1))  # ℤens
+        self.mineral_text = ("Mineral: " + str(round(globals.player1_lv1_res, 1)) + " (" + str(round(globals.player1_lv1_gen, 2)) + "/s)")  # ℤens
         self.overlay_mineral_label.text = self.mineral_text # TODO: continue with overlay to replace data window
-        # self.metal_text = "Metal: " + str(round(globals.player1_lv2_res, 1))  # ℤens
-        # self.metal_label.text = self.metal_text
-        # self.selection_text_temp = str(game_window_run.player_sprite.get_select()).split("'")
-        # self.selection_text_temp = str((self.selection_text_temp[1])[8:])
-        # self.selection_text = "Selection: " + str(self.selection_text_temp)
-        # self.selection_label.text = self.selection_text
-
+        self.metal_text = ("Metal: " + str(round(globals.player1_lv2_res, 1)) + " (" + str(round(globals.player1_lv2_gen, 2)) + "/s)")  # ℤens
+        self.overlay_metal_label.text = self.metal_text
+        self.oil_text = ("Oil: " + str(round(globals.player1_lv3_res, 1)) + " (" + str(round(globals.player1_lv3_gen, 2)) + "/s)")  # ℤens
+        self.overlay_oil_label.text = self.oil_text
+        self.selection_text_temp = str(game_window_run.player_sprite.get_select()).split("'")
+        self.selection_text_temp = str((self.selection_text_temp[1])[8:])
+        self.selection_text = "Selection: " + str(self.selection_text_temp)
+        self.overlay_selection_label.text = self.selection_text
+        self.clickable_text = "Mouse last selected: " + self.clickable_text_temp
+        self.overlay_clickable_label.text = self.clickable_text
         # if self.main_key_handler[key.ENTER] and self.ol_counter == 0:
         #     self.show_overlay = not(self.show_overlay)
         #     print(self.show_overlay)
@@ -114,7 +143,15 @@ class game_window(pyglet.window.Window):
             # Labels.playername_label.input_text = Typein.input_text
         elif symbol:
             return True
+    def on_mouse_press(self, x, y, button, modifiers):
+        print(str(button) + "Pressed at: " + str(x) + " " + str(y))
+        x_remainder = x % 20
+        y_remainder = y % 20
+        x_centred = (x - x_remainder) + 10
+        y_centred = (y - y_remainder) + 10
+        self.clickable_text_temp = (str(x_centred) + " " + str(y_centred))
 
+        print("You clicked on the tile centred at " + str(x_centred) + " " + str(y_centred))
     def on_draw(self):
         self.clear()
         self.bg_batch.draw()
@@ -264,8 +301,9 @@ class data_window(pyglet.window.Window):
     #vertex_list = pyglet.graphics.vertex_list(1024, 'v3f', 'c4B', 't2f', 'n3f')
 # event_logger = pyglet.window.event.WindowEventLogger()
 # window.push_handlers(event_logger)#used to find events to connect to commands
+
 game_window_run = game_window()#width = screenresx, height=screenresy
-data_window_run = data_window()
+# data_window_run = data_window() # Deprecated - overlay replaces data window
 
 # class Typein(object):
 

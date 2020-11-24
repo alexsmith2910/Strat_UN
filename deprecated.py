@@ -165,3 +165,6 @@
 #                 for j in i:
 #                     j.color = (255, 0, 0)
 
+# Code started for relative overlay drawing, revisit if thinking of adding changing resolutions
+# self.overlay_bg = pyglet.shapes.Rectangle((xres - 200), (yres // 3), xres, ((yres // 3) * 2), (0, 0, 0), batch=globals.overlay_batch)
+# self.overlay_bg_frameh = pyglet.shapes.Line((xres - 200), (yres//3), (xres-200), ((yres//3)*2), 1, (255, 255, 255), batch=globals.overlay_batch)
