@@ -34,6 +34,10 @@ dev_tank_image = pyglet.image.load("Dev-tank-sprite-60.png")
 dev_tank_image.anchor_x = 15
 dev_tank_image.anchor_y = 30
 
+infantry_image = pyglet.image.load("Basic-infantry.png")
+infantry_image.anchor_x = 10
+infantry_image.anchor_y = 10
+
 #drill_ani = pyglet.resource.animation("Drill_animation.gif")
 
 #drill_frames = []
@@ -155,7 +159,8 @@ class Building(TileObject):
         super().__init__(img=building_placeholder_image, *args, **kwargs)
         self.max_health = 1000
         self.health = self.max_health
-        self.building_type = "Null"
+        self.object_type = "Building"
+        self.overlay_name = "Null"
         self.owner_id = None
         self.owner_num = None
         self.name = None
@@ -178,17 +183,29 @@ class Building(TileObject):
         self.dot_damage = 0
 
     def hit(self, damage, imm_strength=None, dot_strength=None):
-        pierced = damage * (1 - (self.armour / 100))
         if self.shield > 0:
-            self.shield -= pierced
+            self.shield -= damage
+            damage = 0
             if self.shield < 0:
+                damage = self.shield
                 self.shield = 0
 
         if dot_strength != None:
             self.dot_damage += dot_strength
 
-        elif self.shield <= 0:
+        if self.shield <= 0:
+            pierced = damage * (1 - (self.armour / 100))
             self.health -= pierced
+
+        elif self.shield <= 0:
+            pierced = damage * (1 - (self.armour / 100))
+            self.health -= pierced
+
+    def shield_regen(self, dt):
+        if self.shield < self.max_shield:
+            self.shield += self.regen * dt
+            if self.shield > self.max_shield:
+                self.shield = self.max_shield
 
     def death_check(self):
         if self.health <= 0:
@@ -200,11 +217,14 @@ class Building(TileObject):
     def get_owner(self):
         return self.owner_num
 
+    def get_owner_id(self):
+        return self.owner_id
+
     def get_name(self):
         return self.name
 
-    def get_building_type(self):
-        return self.building_type
+    def get_overlay_name(self):
+        return self.overlay_name
 
     def get_range(self):
         return self.range
@@ -221,7 +241,8 @@ class Troop(TileObject):
     def __init__(self, *args, **kwargs):
         super().__init__(img=troop_placeholder_image, *args, **kwargs)
         # General Identifiers
-        self.troop_type = "Troop"
+        self.object_type = "Troop"
+        self.overlay_name = "Null"
         self.owner_id = None
         self.owner_num = None
         self.name = None
@@ -238,9 +259,12 @@ class Troop(TileObject):
         self.speed = 0
         self.topspeed = 20
         self.speed = 0
+        self.targeting_p = False
+        self.targeted_p = None
         self.cpath = [] # c for 'current' path that it is using
         self.ctarget = None # current target coords
         self.firstpathstep = True
+        self.auto_shooting = False
         # Weapon characteristics
         self.auto_targeting = False
         self.target_type_allowed = ("Troop", "Preferred")
@@ -264,11 +288,77 @@ class Troop(TileObject):
 
         self.dot_damage = 0
 
+    def auto_target(self):
+        found = False
+        self.auto_targeting_array = []
+        if self.target_type_allowed[0] == "Building":
+            self.range_sort(globals.building_objects)
+            for i in self.auto_targeting_array:
+                if i.get_owner() != self.owner_num and i.get_range() < self.range:
+                    # print("found target" + str(i))
+                    self.pathfind((i.get_x(), i.get_y()))
+                    break
+
+            if self.targeted == None:
+                for i in self.auto_targeting_array:
+                    if i.get_owner() != self.owner_num:
+                        # print("found target" + str(i))
+                        self.pathfind((i.get_x(), i.get_y()))
+                        break
+
+        elif self.target_type_allowed[0] == "Troop":
+            self.range_sort(globals.troop_objects)
+            for i in self.auto_targeting_array:
+                if i.get_owner() != self.owner_num and i.get_range() < self.range:
+                    # print("found target" + str(i))
+                    self.pathfind((i.get_x(), i.get_y()))
+                    break
+
+            if self.targeted == None:
+                for i in self.auto_targeting_array:
+                    if i.get_owner() != self.owner_num:
+                        # print("found target" + str(i))
+                        self.pathfind((i.get_x(), i.get_y()))
+                        break
+
+        if self.target_type_allowed[0] == "Troop" and \
+                self.target_type_allowed[1] == "Preferred" and not self.targeting:
+            self.range_sort(globals.building_objects)
+            for i in self.auto_targeting_array:
+                if i.get_owner() != self.owner_num and i.get_range() < self.range:
+                    # print("found target" + str(i))
+                    self.pathfind((i.get_x(), i.get_y()))
+                    break
+
+            if self.targeted == None:
+                for i in self.auto_targeting_array:
+                    if i.get_owner() != self.owner_num:
+                        # print("found target" + str(i))
+                        self.pathfind((i.get_x(), i.get_y()))
+                        break
+
+        if self.target_type_allowed[0] == "Building" and \
+                self.target_type_allowed[1] == "Preferred" and not self.targeting:
+            self.range_sort(globals.troop_objects)
+            for i in self.auto_targeting_array:
+                if i.get_owner() != self.owner_num and i.get_range() < self.range:
+                    # print("found target" + str(i))
+                    self.pathfind((i.get_x(), i.get_y()))
+                    break
+
+            if self.targeted == None:
+                for i in self.auto_targeting_array:
+                    if i.get_owner() != self.owner_num:
+                        # print("found target" + str(i))
+                        self.pathfind((i.get_x(), i.get_y()))
+                        break
+
     def hit(self, damage, imm_strength=None, dot_strength=None):
-        pierced = damage * (1 - (self.armour / 100))
         if self.shield > 0:
-            self.shield -= pierced
+            self.shield -= damage
+            damage = 0
             if self.shield < 0:
+                damage = self.shield
                 self.shield = 0
 
         if imm_strength != None:
@@ -278,8 +368,15 @@ class Troop(TileObject):
         if dot_strength != None:
             self.dot_damage += dot_strength
 
-        elif self.shield <= 0:
-            self.health -= damage
+        if self.shield <= 0:
+            pierced = damage * (1 - (self.armour / 100))
+            self.health -= pierced
+
+    def shield_regen(self, dt):
+        if self.shield < self.max_shield:
+            self.shield += self.regen * dt
+            if self.shield > self.max_shield:
+                self.shield = self.max_shield
 
     def death_check(self):
         if self.health <= 0:
@@ -293,109 +390,41 @@ class Troop(TileObject):
         astary = int(((y - 10)/20))
         return astarx, astary
 
-    def auto_target(self):
-        found = False
-        if self.target_type_allowed[0] == "Building":
-            for i in globals.building_objects:
-                if i.get_owner() != self.owner_num and i.get_range() < self.range:
-                    # print("found target" + str(i))
-                    self.pathfind((i.get_x(), i.get_y()))
-                    break
-                    # self.targeting = True
-                    # self.targeted = i
-                    # self.cpath = []
-                # else:
-                #     self.targeting = False
-                #     self.targeted = None
-            if self.targeted == None:
-                for i in globals.building_objects:
-                    if i.get_owner() != self.owner_num:
-                        # print("found target" + str(i))
-                        self.pathfind((i.get_x(), i.get_y()))
-                        break
-                        # self.targeting = True
-                        # self.targeted = i
-                        # self.cpath = []
-                    # else:
-                    #     self.targeting = False
-                    #     self.targeted = None
+    def get_distance(self, targetx, targety):
+        return math.sqrt(((self.x - targetx) ** 2) + ((self.y - targety) ** 2))
 
-        elif self.target_type_allowed[0] == "Troop":
-            for i in globals.troop_objects:
-                if i.get_owner() != self.owner_num and i.get_range() < self.range:
-                    # print("found target" + str(i))
-                    self.pathfind((i.get_x(), i.get_y()))
-                    break
-                    # self.targeting = True
-                    # self.targeted = i
-                    # self.cpath = []
-                # else:
-                #     self.targeting = False
-                #     self.targeted = None
-            if self.targeted == None:
-                for i in globals.troop_objects:
-                    if i.get_owner() != self.owner_num:
-                        # print("found target" + str(i))
-                        self.pathfind((i.get_x(), i.get_y()))
-                        break
-                        # self.targeting = True
-                        # self.targeted = i
-                        # self.cpath = []
-                    # else:
-                    #     self.targeting = False
-                    #     self.targeted = None
+    def get_range(self):
+        return self.range
 
-        if self.target_type_allowed[0] == "Troop" and \
-                self.target_type_allowed[1] == "Preferred" and not self.targeting:
-            for i in globals.building_objects:
-                if i.get_owner() != self.owner_num and i.get_range() < self.range:
-                    # print("found target" + str(i))
-                    self.pathfind((i.get_x(), i.get_y()))
-                    break
-                    # self.targeting = True
-                    # self.targeted = i
-                    # self.cpath = []
-                # else:
-                #     self.targeting = False
-                #     self.targeted = None
-            if self.targeted == None:
-                for i in globals.building_objects:
-                    if i.get_owner() != self.owner_num:
-                        # print("found target" + str(i))
-                        self.pathfind((i.get_x(), i.get_y()))
-                        break
-                        # self.targeting = True
-                        # self.targeted = i
-                        # self.cpath = []
-                    # else:
-                    #     self.targeting = False
-                    #     self.targeted = None
+    def get_overlay_name(self):
+        return self.overlay_name
 
-        if self.target_type_allowed[0] == "Building" and \
-                self.target_type_allowed[1] == "Preferred" and not self.targeting:
-            for i in globals.troop_objects:
-                if i.get_owner() != self.owner_num and i.get_range() < self.range:
-                    # print("found target" + str(i))
-                    self.pathfind((i.get_x(), i.get_y()))
-                    break
-                    # self.targeting = True
-                    # self.targeted = i
-                    # self.cpath = []
-                # else:
-                #     self.targeting = False
-                #     self.targeted = None
-            if self.targeted == None:
-                for i in globals.troop_objects:
-                    if i.get_owner() != self.owner_num:
-                        # print("found target" + str(i))
-                        self.pathfind((i.get_x(), i.get_y()))
-                        break
-                        # self.targeting = True
-                        # self.targeted = i
-                        # self.cpath = []
-                    # else:
-                    #     self.targeting = False
-                    #     self.targeted = None
+    def get_health(self):
+        return self.health
+
+    def get_shield(self):
+        return self.shield
+
+    def get_targetbool(self):
+        return self.auto_targeting
+
+    def get_owner_id(self):
+        return self.owner_id
+
+    def range_sort(self, array):
+        self.auto_targeting_array = []
+        for i in array:
+            if self.auto_targeting_array == []:
+                self.auto_targeting_array.append(i)
+            else:
+                for j in array[0:]:
+                    for count, k in enumerate(self.auto_targeting_array):
+                        if self.get_distance(j.get_x(), j.get_y()) > self.get_distance(k.get_x(), k.get_y()):
+                            pass
+                        else:
+                            self.auto_targeting_array.insert(count, i)
+                            break
+        #print(self.auto_targeting_array)
 
 
     def pathfind(self, target_coords=(550, 550)):
@@ -480,7 +509,7 @@ class Troop(TileObject):
                 elif self.ctarget[0] == self.x and self.ctarget[1] > self.y:
                     self.y += self.speed * dt
 
-            if math.sqrt(((self.x - self.ctarget[0]) ** 2) + ((self.y - self.ctarget[1]) ** 2)) <= 2:
+            if math.sqrt(((self.x - self.ctarget[0]) ** 2) + ((self.y - self.ctarget[1]) ** 2)) <= 1:
                 self.x = self.ctarget[0]
                 self.y = self.ctarget[1]
 
@@ -505,10 +534,15 @@ class Troop(TileObject):
         return self.has_tracer
 
     def update(self, dt):
-        self.move(dt)
-        if not self.targeting and self.auto_targeting and self.ctarget == None:
-            self.auto_target()
         self.shoot(dt)
+        if self.targeted is None or not self.auto_targeting:
+            self.move(dt)
+        if not self.targeting and not self.auto_shooting and self.auto_targeting and self.ctarget == None:
+            self.auto_target()
+        if self.ctarget == None and self.cpath == []:
+            self.speed == 0
+        if self.max_shield > 0:
+            self.shield_regen(dt)
 
     def get_owner(self):
         return self.owner_num
@@ -536,12 +570,18 @@ class Troop(TileObject):
             self.trace_opacity -= (self.fire_rate * dt)
             self.tracer.opacity = self.trace_opacity
         if self.targeted is None:
+            if self.auto_shooting == True:
+                self.auto_shooting = False
             if self.trace_opacity < 1:
                 self.trace_opacity = 0
             else:
                 self.trace_opacity -= (100 * dt)
             self.tracer.opacity = self.trace_opacity
         if self.targeted is not None:
+            if self.auto_targeting:
+                self.cpath = []
+                self.ctarget = None
+                self.auto_shooting = True
             try:
                 if globals.building_objects.index(self.targeted):
                         self.targetx = self.targeted.get_x()
@@ -641,6 +681,9 @@ class Troop(TileObject):
                     self.first_burst = False
                 #print(self.trace_opacity)
                 self.tracer.opacity = self.trace_opacity
+
+                if self.auto_targeting and self.targeting and self.speed != 0:
+                    self.speed = 0
 
 
     def set_targetx(self, var):
@@ -764,7 +807,7 @@ class Oil_Rig(Building):
         if not self.built:
             self.activation_timer -= dt
             if self.activation_timer <= 0:
-                #self.image = drill_ani
+                # self.image = drill_ani
                 # self.x -= 10
                 # self.y -= 10 # done because the anchor for position changes from the centre to bottom left corner
                 self.color = (0, 255, 0)
@@ -906,6 +949,7 @@ class Dev_Tank(Troop):
         self.image = dev_tank_image
         self.name = "Dev_Tank"
         self.troop_type = "EMP Medium Tank"
+        self.overlay_name = "Overloader"
         self.fire_rate = 150
         self.targetx = 500
         self.targety = 500
@@ -914,9 +958,9 @@ class Dev_Tank(Troop):
         self.trace_opacity = 255
         self.has_tracer = True
         self.damage = 50
-        self.range = 150
+        self.range = 250
         self.lv = 1
-        self.max_health = 2500
+        self.max_health = 3000
         self.health = self.max_health
         self.accel = 0.5
         self.topspeed = 10
@@ -924,7 +968,7 @@ class Dev_Tank(Troop):
         self.armour = 40
         self.max_shield = 1500
         self.shield = self.max_shield
-        self.regen = 1
+        self.regen = 15
         self.first_burst = True
         self.targeting = False
         self.targeted = None
@@ -942,6 +986,47 @@ class Dev_Tank(Troop):
     def set_targety(self, var):
         self.targety = var
 
+class Basic_infantry(Troop):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.image = infantry_image
+        self.name = "Infantry"
+        self.troop_type = "Light Infantry"
+        self.overlay_name = "Infantry"
+        self.fire_rate = 750
+        self.targetx = 500
+        self.targety = 500
+        # self.tracer_colour = (129, 236, 236)
+        # self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 0, color=(129, 236, 236))
+        # self.trace_opacity = 255
+        self.has_tracer = False
+        self.damage = 5
+        self.range = 50
+        self.lv = 1
+        self.max_health = 200
+        self.health = self.max_health
+        self.accel = 2.5
+        self.topspeed = 5
+        self.speed = 0
+        self.armour = 2
+        self.max_shield = 0
+        self.shield = self.max_shield
+        self.regen = 0
+        self.first_burst = True
+        self.targeting = False
+        self.targeted = None
+        self.immobilizer = False
+
+    def fire(self):
+        self.targeted.hit(self.damage)
+        self.targeted.death_check()
+
+    def set_targetx(self, var):
+        self.targetx = var
+
+    def set_targety(self, var):
+        self.targety = var
 
 class Player(TileObject):
     """class for generating a object for the player to control"""

@@ -168,3 +168,37 @@
 # Code started for relative overlay drawing, revisit if thinking of adding changing resolutions
 # self.overlay_bg = pyglet.shapes.Rectangle((xres - 200), (yres // 3), xres, ((yres // 3) * 2), (0, 0, 0), batch=globals.overlay_batch)
 # self.overlay_bg_frameh = pyglet.shapes.Line((xres - 200), (yres//3), (xres-200), ((yres//3)*2), 1, (255, 255, 255), batch=globals.overlay_batch)
+
+# Auto targeting removed code
+# self.targeting = True
+                    # self.targeted = i
+                    # self.cpath = []
+                # else:
+                #     self.targeting = False
+                #     self.targeted = None
+
+# label = pyglet.input_text.Label('Fuck off nick', j
+#                           font_name='Have Heart One',
+#                           font_size=36,
+#                           x=game_window.width//2, y=game_window.height//2,
+#                           anchor_x='center', anchor_y='center')
+
+
+    #vertex_list = pyglet.graphics.vertex_list(1024, 'v3f', 'c4B', 't2f', 'n3f')
+# event_logger = pyglet.window.event.WindowEventLogger()
+# window.push_handlers(event_logger)#used to find events to connect to commands
+
+
+# start = globals.astar_matrix.node(0, 0)
+# end = globals.astar_matrix.node(2, 17)
+#
+# finder = AStarFinder(diagonal_movement=DiagonalMovement.always)
+# path, runs = finder.find_path(start, end, globals.astar_matrix)
+#
+# print('operations:', runs, 'path length:', len(path))
+# print("Path: ", path)
+# print(globals.astar_matrix.grid_str(path=path, start=start, end=end))
+
+# for i in globals.troop_objects:
+#     i.auto_targeting = not i.auto_targeting
+# print("auto targeting toggled.")

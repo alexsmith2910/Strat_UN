@@ -29,8 +29,9 @@ class game_window(pyglet.window.Window):
         self.player_sprite = objects.Player(x=550, y=550)
         self.player_sprite.set_id("Zestyy", 1)
         globals.troop_objects.append(objects.Dev_Tank(x=410, y=490))
-        print(globals.troop_objects)
         globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Zestyy", 1))
+        globals.troop_objects.append(objects.Dev_Tank(x=710, y=710))
+        globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Enemy", 2))
         self.push_handlers(self.player_sprite)
         self.push_handlers(self.player_sprite.key_handler)
         self.game_objects = [self.player_sprite]
@@ -42,10 +43,10 @@ class game_window(pyglet.window.Window):
         # not to get stored as first character of the input_text.
         self.main_key_handler = key.KeyStateHandler()
         self.gen_overlay()
-
         # Data parts for overlay
         self.show_overlay = False
         self.ol_counter = 0
+        self.clicked_object = None
 
     def gen_overlay(self, xres = globals.screenresx, yres = globals.screenresy):
         self.overlay_bg = pyglet.shapes.Rectangle(450, 0, 500, 300, (0, 0, 0), batch=globals.overlay_batch)
@@ -59,6 +60,10 @@ class game_window(pyglet.window.Window):
         self.selection_text = "Selection text here"
         self.clickable_text = ""
         self.clickable_text_temp = ""
+        self.clickable_owner_text = "Owner text here"
+        self.clickable_owner_text_temp = ""
+        self.clickable_targetbool_text = "Targeting text here"
+        self.clickable_targetbool_text_temp = ""
         self.overlay_mineral_label = pyglet.text.Label(self.mineral_text,
                                                font_name='Bebas Neue',
                                                font_size=15,
@@ -79,6 +84,14 @@ class game_window(pyglet.window.Window):
                                                          font_name='Bebas Neue',
                                                          font_size=15,
                                                          x=455, y=200, batch=globals.overlay_batch)
+        self.overlay_clickable_owner_label = pyglet.text.Label(self.clickable_owner_text,
+                                                         font_name='Bebas Neue',
+                                                         font_size=15,
+                                                         x=455, y=180, batch=globals.overlay_batch)
+        self.overlay_clickable_targetbool_label = pyglet.text.Label(self.clickable_targetbool_text,
+                                                               font_name='Bebas Neue',
+                                                               font_size=15,
+                                                               x=455, y=160, batch=globals.overlay_batch)
                                                #anchor_x='center', anchor_y='center'
 
 
@@ -93,6 +106,18 @@ class game_window(pyglet.window.Window):
         for i in globals.troop_objects:
             i.update(dt)
 
+        if self.clicked_object is not None:
+            self.tracked_type = self.clicked_object.get_overlay_name()
+            self.tracked_health = self.clicked_object.get_health()
+            self.tracked_shield = self.clicked_object.get_shield()
+            self.tracked_owner = self.clicked_object.get_owner_id()
+            self.tracked_targetbool = self.clicked_object.get_targetbool()
+            self.clickable_text_temp = (str(self.tracked_type) + " - Health: " +
+                                        str(round(self.tracked_health, 1)) + " + " +
+                                        str(round(self.tracked_shield, 1)) + " Shield")
+            self.clickable_owner_text_temp = (str(self.tracked_owner))
+            self.clickable_targetbool_text_temp = ("Enabled" if self.clicked_object.get_targetbool() else "Disabled")
+
         # Overlay editing
         self.mineral_text = ("Mineral: " + str(round(globals.player1_lv1_res, 1)) + " (" + str(round(globals.player1_lv1_gen, 2)) + "/s)")  # ℤens
         self.overlay_mineral_label.text = self.mineral_text # TODO: continue with overlay to replace data window
@@ -104,12 +129,17 @@ class game_window(pyglet.window.Window):
         self.selection_text_temp = str((self.selection_text_temp[1])[8:])
         self.selection_text = "Selection: " + str(self.selection_text_temp)
         self.overlay_selection_label.text = self.selection_text
+        # Definitions for selecting and tracking data on objects
         self.clickable_text = "Mouse last selected: " + self.clickable_text_temp
         self.overlay_clickable_label.text = self.clickable_text
-        # if self.main_key_handler[key.ENTER] and self.ol_counter == 0:
-        #     self.show_overlay = not(self.show_overlay)
-        #     print(self.show_overlay)
-        #     self.ol_counter += dt
+        self.clickable_owner_text = "Owner: " + self.clickable_owner_text_temp
+        self.overlay_clickable_owner_label.text = self.clickable_owner_text
+        self.clickable_targetbool_text = "Auto-targeting: " + self.clickable_targetbool_text_temp
+        self.overlay_clickable_targetbool_label.text = self.clickable_targetbool_text
+        self.tracked_type = None
+        self.tracked_health = 0
+        self.tracked_shield = 0
+        self.tracked_owner = None
 
         if self.ol_counter > 0:
             self.ol_counter += dt
@@ -139,23 +169,58 @@ class game_window(pyglet.window.Window):
             self.show_overlay = not(self.show_overlay)
             # Control.handleraltered = False
         elif symbol == key.BACKSLASH:
-            for i in globals.troop_objects:
-                i.auto_targeting = not i.auto_targeting
-                print("auto targeting toggled.")
+            self.clicked_object.auto_targeting = not(self.clicked_object.auto_targeting)
         elif symbol == key.BACKSPACE:
             self.input_text = self.input_text[:-1]
             # Labels.playername_label.input_text = Typein.input_text
         elif symbol:
             return True
-    def on_mouse_press(self, x, y, button, modifiers):
-        print(str(button) + "Pressed at: " + str(x) + " " + str(y))
+
+    def get_centred_coords(self, x, y):
         x_remainder = x % 20
         y_remainder = y % 20
         x_centred = (x - x_remainder) + 10
         y_centred = (y - y_remainder) + 10
-        self.clickable_text_temp = (str(x_centred) + " " + str(y_centred))
+        return x_centred, y_centred
 
-        print("You clicked on the tile centred at " + str(x_centred) + " " + str(y_centred))
+    def on_mouse_press(self, x, y, button, modifiers):
+        #print(str(button) + "Pressed at: " + str(x) + " " + str(y))
+        got_troop = False
+        got_building = False
+        for i in globals.troop_objects:
+            if self.get_centred_coords(i.get_x(), i.get_y()) == self.get_centred_coords(x, y):
+                self.tracked_type = i.get_overlay_name()
+                self.tracked_health = i.get_health()
+                self.tracked_shield = i.get_shield()
+                self.tracked_owner = i.get_owner_id()
+                self.clickable_text_temp = (str(self.tracked_type) + " - Health: " +
+                                            str(round(self.tracked_health, 1)) + " + " +
+                                            str(round(self.tracked_shield, 1)) + " Shield\n"
+                                            + "Owner: " + str(self.tracked_owner))
+                got_troop = True
+                self.clicked_object = i
+                break
+        if not got_troop:
+            for i in globals.building_objects:
+                if self.get_centred_coords(i.get_x(), i.get_y()) == self.get_centred_coords(x, y):
+                    self.tracked_type = i.get_overlay_name()
+                    self.tracked_health = i.get_health()
+                    self.tracked_shield = i.get_shield()
+                    self.tracked_owner = i.get_owner_id()
+                    self.clickable_text_temp = (str(self.tracked_type) + " - Health: " +
+                                                str(round(self.tracked_health, 1)) + " + " +
+                                                str(round(self.tracked_shield, 1)) + " Shield\n"
+                                                + "Owner: " + str(self.tracked_owner))
+                    got_building = True
+                    self.clicked_object = i
+                    break
+        if not got_troop and not got_building:
+            self.clicked_object = None
+            tile_coords = self.get_centred_coords(x, y)
+            self.clickable_text_temp = ("Empty tile at:  " + str(tile_coords[0]) + ", " + str(tile_coords[1]))
+
+
+        #print("You clicked on the tile centred at " + str(x_centred) + " " + str(y_centred))
     def on_draw(self):
         self.clear()
         self.bg_batch.draw()
@@ -234,16 +299,6 @@ class game_window(pyglet.window.Window):
                         (globals.astar_map[i + 1])[x_choice] = -1
         globals.astar_matrix = Grid(matrix=globals.astar_map)
 
-        # start = globals.astar_matrix.node(0, 0)
-        # end = globals.astar_matrix.node(2, 17)
-        #
-        # finder = AStarFinder(diagonal_movement=DiagonalMovement.always)
-        # path, runs = finder.find_path(start, end, globals.astar_matrix)
-        #
-        # print('operations:', runs, 'path length:', len(path))
-        # print("Path: ", path)
-        # print(globals.astar_matrix.grid_str(path=path, start=start, end=end))
-
         return tiles, tilebatch
 
 class data_window(pyglet.window.Window):
@@ -293,18 +348,6 @@ class data_window(pyglet.window.Window):
         self.mineral_label.draw()
         self.metal_label.draw()
         self.selection_label.draw()
-
-
-# label = pyglet.input_text.Label('Fuck off nick', j
-#                           font_name='Have Heart One',
-#                           font_size=36,
-#                           x=game_window.width//2, y=game_window.height//2,
-#                           anchor_x='center', anchor_y='center')
-
-
-    #vertex_list = pyglet.graphics.vertex_list(1024, 'v3f', 'c4B', 't2f', 'n3f')
-# event_logger = pyglet.window.event.WindowEventLogger()
-# window.push_handlers(event_logger)#used to find events to connect to commands
 
 game_window_run = game_window()#width = screenresx, height=screenresy
 # data_window_run = data_window() # Deprecated - overlay replaces data window
