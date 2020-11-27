@@ -30,8 +30,12 @@ class game_window(pyglet.window.Window):
         self.player_sprite.set_id("Zestyy", 1)
         globals.troop_objects.append(objects.Dev_Tank(x=410, y=490))
         globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Zestyy", 1))
-        globals.troop_objects.append(objects.Dev_Tank(x=710, y=710))
-        globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Enemy", 2))
+        # globals.troop_objects.append(objects.Dev_Tank(x=710, y=710))
+        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Enemy", 2))
+        # globals.troop_objects.append(objects.Dev_Tank(x=990, y=210))
+        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Frenemy", 3))
+        # globals.troop_objects.append(objects.Dev_Tank(x=210, y=710))
+        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Pixie", 4))
         self.push_handlers(self.player_sprite)
         self.push_handlers(self.player_sprite.key_handler)
         self.game_objects = [self.player_sprite]
@@ -64,35 +68,62 @@ class game_window(pyglet.window.Window):
         self.clickable_owner_text_temp = ""
         self.clickable_targetbool_text = "Targeting text here"
         self.clickable_targetbool_text_temp = ""
+
+        self.clickable_return_l1_temp = ""
+        self.clickable_return_l2_temp = ""
+        self.clickable_return_l3_temp = ""
+        self.clickable_return_l4_temp = ""
+
+        self.clickable_return_l1_text = ""
+        self.clickable_return_l2_text = ""
+        self.clickable_return_l3_text = ""
+        self.clickable_return_l4_text = ""
         self.overlay_mineral_label = pyglet.text.Label(self.mineral_text,
-                                               font_name='Bebas Neue',
-                                               font_size=15,
-                                               x=455, y=280, batch=globals.overlay_batch)
+                                                           font_name='Bebas Neue',
+                                                           font_size=15,
+                                                           x=455, y=280, batch=globals.overlay_batch)
         self.overlay_metal_label = pyglet.text.Label(self.metal_text,
-                                                       font_name='Bebas Neue',
-                                                       font_size=15,
-                                                       x=455, y=260, batch=globals.overlay_batch)
+                                                           font_name='Bebas Neue',
+                                                           font_size=15,
+                                                           x=455, y=260, batch=globals.overlay_batch)
         self.overlay_oil_label = pyglet.text.Label(self.oil_text,
-                                                       font_name='Bebas Neue',
-                                                       font_size=15,
-                                                       x=455, y=240, batch=globals.overlay_batch)
+                                                           font_name='Bebas Neue',
+                                                           font_size=15,
+                                                           x=455, y=240, batch=globals.overlay_batch)
         self.overlay_selection_label = pyglet.text.Label(self.selection_text,
-                                                   font_name='Bebas Neue',
-                                                   font_size=15,
-                                                   x=455, y=220, batch=globals.overlay_batch)
+                                                           font_name='Bebas Neue',
+                                                           font_size=15,
+                                                           x=455, y=220, batch=globals.overlay_batch)
         self.overlay_clickable_label = pyglet.text.Label(self.clickable_text,
-                                                         font_name='Bebas Neue',
-                                                         font_size=15,
-                                                         x=455, y=200, batch=globals.overlay_batch)
+                                                           font_name='Bebas Neue',
+                                                           font_size=15,
+                                                           x=455, y=200, batch=globals.overlay_batch)
         self.overlay_clickable_owner_label = pyglet.text.Label(self.clickable_owner_text,
-                                                         font_name='Bebas Neue',
-                                                         font_size=15,
-                                                         x=455, y=180, batch=globals.overlay_batch)
+                                                           font_name='Bebas Neue',
+                                                           font_size=15,
+                                                           x=455, y=180, batch=globals.overlay_batch)
         self.overlay_clickable_targetbool_label = pyglet.text.Label(self.clickable_targetbool_text,
-                                                               font_name='Bebas Neue',
-                                                               font_size=15,
-                                                               x=455, y=160, batch=globals.overlay_batch)
+                                                           font_name='Bebas Neue',
+                                                           font_size=15,
+                                                           x=455, y=160, batch=globals.overlay_batch)
                                                #anchor_x='center', anchor_y='center'
+        self.overlay_clickable_return_l1_label = pyglet.text.Label(self.clickable_return_l1_text,
+                                                           font_name='Bebas Neue',
+                                                           font_size=15,
+                                                           x=700, y=80, anchor_x='center', batch=globals.overlay_batch)
+        #align="center",
+        self.overlay_clickable_return_l2_label = pyglet.text.Label(self.clickable_return_l2_text,
+                                                           font_name='Bebas Neue',
+                                                           font_size=15,
+                                                           x=700, y=60, anchor_x='center', batch=globals.overlay_batch)
+        self.overlay_clickable_return_l3_label = pyglet.text.Label(self.clickable_return_l3_text,
+                                                           font_name='Bebas Neue',
+                                                           font_size=15,
+                                                           x=700, y=40, anchor_x='center', batch=globals.overlay_batch)
+        self.overlay_clickable_return_l4_label = pyglet.text.Label(self.clickable_return_l4_text,
+                                                           font_name='Bebas Neue',
+                                                           font_size=12,
+                                                           x=700, y=20, anchor_x='center', batch=globals.overlay_batch)
 
 
     def update(self, dt):
@@ -117,6 +148,18 @@ class game_window(pyglet.window.Window):
                                         str(round(self.tracked_shield, 1)) + " Shield")
             self.clickable_owner_text_temp = (str(self.tracked_owner))
             self.clickable_targetbool_text_temp = ("Enabled" if self.clicked_object.get_targetbool() else "Disabled")
+            if self.clicked_object.get_needs_menu():
+                self.overlay_clickable_return_l1_label.text, self.overlay_clickable_return_l2_label.text, \
+                self.overlay_clickable_return_l3_label.text, self.overlay_clickable_return_l4_label.text = \
+                                                              self.clicked_object.gen_overlay_text()[0], \
+                                                              self.clicked_object.gen_overlay_text()[1], \
+                                                              self.clicked_object.gen_overlay_text()[2],\
+                                                              self.clicked_object.gen_overlay_text()[3]
+
+        if self.clicked_object is None and self.overlay_clickable_return_l1_label.text != "":
+            self.overlay_clickable_return_l1_label.text = ""
+            self.overlay_clickable_return_l2_label.text = ""
+            self.overlay_clickable_return_l3_label.text = ""
 
         # Overlay editing
         self.mineral_text = ("Mineral: " + str(round(globals.player1_lv1_res, 1)) + " (" + str(round(globals.player1_lv1_gen, 2)) + "/s)")  # ℤens
@@ -162,16 +205,33 @@ class game_window(pyglet.window.Window):
             self.input_text = ''
             if globals.code == "MEMENTOMORI":
                 for i in globals.building_objects:
-                    if i.get_building_type() == "Drill":
+                    if i.get_obj_type() == "Drill":
                         i.image = animations.animations.DUA_ani
                         objects.Drill.image = animations.animations.DUA_ani
         elif symbol == key.SLASH:
             self.show_overlay = not(self.show_overlay)
             # Control.handleraltered = False
         elif symbol == key.BACKSLASH:
-            self.clicked_object.auto_targeting = not(self.clicked_object.auto_targeting)
+            if self.clicked_object is not None:
+                self.clicked_object.auto_targeting = not(self.clicked_object.auto_targeting)
         elif symbol == key.BACKSPACE:
             self.input_text = self.input_text[:-1]
+
+        if symbol == key.RIGHT:
+            if self.clicked_object is not None:
+                if self.clicked_object.get_needs_menu():
+                    self.clicked_object.key_right_func()
+
+        if symbol == key.LEFT:
+            if self.clicked_object is not None:
+                if self.clicked_object.get_needs_menu():
+                    self.clicked_object.key_left_func()
+
+        if symbol == key.ENTER or symbol == key.RETURN:
+            if self.clicked_object is not None:
+                if self.clicked_object.get_needs_menu():
+                    self.clicked_object.enter_func()
+
             # Labels.playername_label.input_text = Typein.input_text
         elif symbol:
             return True
@@ -218,6 +278,10 @@ class game_window(pyglet.window.Window):
             self.clicked_object = None
             tile_coords = self.get_centred_coords(x, y)
             self.clickable_text_temp = ("Empty tile at:  " + str(tile_coords[0]) + ", " + str(tile_coords[1]))
+            self.overlay_clickable_owner_label.text = "Owner: "
+            self.overlay_clickable_targetbool_label.text = "Auto-targeting: "
+            self.clickable_owner_text_temp = ""
+            self.clickable_targetbool_text_temp = ""
 
 
         #print("You clicked on the tile centred at " + str(x_centred) + " " + str(y_centred))
@@ -225,13 +289,14 @@ class game_window(pyglet.window.Window):
         self.clear()
         self.bg_batch.draw()
         for i in globals.building_objects:
-            if i.get_building_type() == "Tracing turret":
+            if i.get_obj_type() == "Tracing turret":
                 i.get_tracer().draw()
+            i.draw()
+        for i in globals.troop_objects:
             i.draw()
         for i in globals.troop_objects:
             if i.get_weapon_tracing():
                 i.get_tracer().draw()
-            i.draw()
         self.player_sprite.draw()
         if self.show_overlay:
             globals.overlay_batch.draw()

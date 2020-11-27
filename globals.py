@@ -27,5 +27,6 @@ player1_y = 0
 screenresx = 1500
 screenresy = 1000
 overlay_batch = pyglet.graphics.Batch()
-building_costs = {"Target": (0, 0, 0), "Drill": (100, 0, 0), "Refinery": (500, 0, 0), "Oil_Rig": (500, 0, 0), "Basic_Turret": (1000, 0, 0)}
+building_costs = {"Target": (0, 0, 0), "Drill": (100, 0, 0), "Refinery": (500, 0, 0), "Oil_Rig": (500, 0, 0), "Basic_Turret": (1000, 0, 0), "Barracks": (500, 0, 0)}
+barracks_selection = 0
 code = ""
