@@ -8,6 +8,10 @@ finder = BiAStarFinder(diagonal_movement=DiagonalMovement.always)
 #use to comtrol offline multiplayer
 offline_multi = False
 
+# NOTE: currently being used since my keyboard seems to treak the numpad as OEM.
+# set this to True if your numpad does nothing in 2 player mode (i.e not selecting the different buildings for P2)
+distribution = False
+
 astar_map = []
 astar_matrix = None
 game_objects = []
@@ -42,4 +46,5 @@ tracer_batch = pyglet.graphics.Batch()
 building_costs = {"Target": (0, 0, 0), "Drill": (100, 0, 0), "Refinery": (500, 0, 0), "Oil_Rig": (500, 0, 0), "Basic_Turret": (1000, 0, 0), "Barracks": (500, 0, 0)}
 barracks_selection = 0
 code = ""
+clickable = None
 key_handler = pyglet.window.key.KeyStateHandler()

@@ -30,19 +30,21 @@ class game_window(pyglet.window.Window):
         self.set_size(globals.screenresx, globals.screenresy)
         self.player_one = objects.Player(x=550, y=550)
         self.player_one.set_id("Zestyy", 1)
-        self.player_two = objects.Player(x=650, y=650)
-        self.player_two.set_id("Guest", 2)
+        self.game_objects = [self.player_one]
+        if globals.offline_multi:
+            self.player_two = objects.Player(x=650, y=650)
+            self.player_two.set_id("Guest", 2)
+            self.game_objects.append(self.player_two)
         globals.troop_objects.append(objects.Dev_Tank(x=410, y=490))
         globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Zestyy", 1))
         # globals.troop_objects.append(objects.Dev_Tank(x=710, y=710))
-        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Enemy", 2))
+        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Guest", 2))
         # globals.troop_objects.append(objects.Dev_Tank(x=990, y=210))
         # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Frenemy", 3))
         # globals.troop_objects.append(objects.Dev_Tank(x=210, y=710))
         # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Pixie", 4))
         # self.push_handlers(self.player_one)
         self.push_handlers(globals.key_handler)
-        self.game_objects = [self.player_one, self.player_two]
         self.squares, self.bg_batch = self.tiles_map()
         pyglet.clock.schedule_interval(self.update, 1 / 120.0)
         self.fps_display = pyglet.window.FPSDisplay(self)
@@ -308,6 +310,7 @@ class game_window(pyglet.window.Window):
             i.update(dt)
 
         if self.clicked_object is not None:
+            globals.clickable = self.clicked_object
             self.tracked_type = self.clicked_object.get_overlay_name()
             self.tracked_health = self.clicked_object.get_health()
             self.tracked_shield = self.clicked_object.get_shield()
@@ -331,19 +334,32 @@ class game_window(pyglet.window.Window):
                 self.p2_clickable_targetbool_text_temp = ("Enabled" if self.clicked_object.get_targetbool() else "Disabled")
 
             if self.clicked_object.get_needs_menu():
-                self.overlay_clickable_return_l1_label.text, self.overlay_clickable_return_l2_label.text, \
-                self.overlay_clickable_return_l3_label.text, self.overlay_clickable_return_l4_label.text = \
-                    self.clicked_object.gen_overlay_text()[0], \
-                    self.clicked_object.gen_overlay_text()[1], \
-                    self.clicked_object.gen_overlay_text()[2], \
-                    self.clicked_object.gen_overlay_text()[3]
-                if globals.offline_multi:
+                if self.clicked_object.get_owner() == 1:
+                    self.overlay_clickable_return_l1_label.text, self.overlay_clickable_return_l2_label.text, \
+                    self.overlay_clickable_return_l3_label.text, self.overlay_clickable_return_l4_label.text = \
+                        self.clicked_object.gen_overlay_text()[0], \
+                        self.clicked_object.gen_overlay_text()[1], \
+                        self.clicked_object.gen_overlay_text()[2], \
+                        self.clicked_object.gen_overlay_text()[3]
+
+                    self.p2_overlay_clickable_return_l1_label.text = ""
+                    self.p2_overlay_clickable_return_l2_label.text = ""
+                    self.p2_overlay_clickable_return_l3_label.text = ""
+                    self.p2_overlay_clickable_return_l4_label.text = ""
+
+                elif globals.offline_multi and self.clicked_object.get_owner() == 2:
                     self.p2_overlay_clickable_return_l1_label.text, self.p2_overlay_clickable_return_l2_label.text, \
                     self.p2_overlay_clickable_return_l3_label.text, self.p2_overlay_clickable_return_l4_label.text = \
                         self.clicked_object.gen_overlay_text()[0], \
                         self.clicked_object.gen_overlay_text()[1], \
                         self.clicked_object.gen_overlay_text()[2], \
                         self.clicked_object.gen_overlay_text()[3]
+
+                    self.overlay_clickable_return_l1_label.text = ""
+                    self.overlay_clickable_return_l2_label.text = ""
+                    self.overlay_clickable_return_l3_label.text = ""
+                    self.overlay_clickable_return_l4_label.text = ""
+
             else:
                 self.overlay_clickable_return_l1_label.text = ""
                 self.overlay_clickable_return_l2_label.text = ""
@@ -355,16 +371,18 @@ class game_window(pyglet.window.Window):
                     self.p2_overlay_clickable_return_l3_label.text = ""
                     self.p2_overlay_clickable_return_l4_label.text = ""
 
-        if self.clicked_object is None and self.overlay_clickable_return_l1_label.text != "":
-            self.overlay_clickable_return_l1_label.text = ""
-            self.overlay_clickable_return_l2_label.text = ""
-            self.overlay_clickable_return_l3_label.text = ""
-            self.overlay_clickable_return_l4_label.text = ""
-            if globals.offline_multi:
-                self.p2_overlay_clickable_return_l1_label.text = ""
-                self.p2_overlay_clickable_return_l2_label.text = ""
-                self.p2_overlay_clickable_return_l3_label.text = ""
-                self.p2_overlay_clickable_return_l4_label.text = ""
+        if self.clicked_object is None:
+            globals.clickable = None
+            if self.overlay_clickable_return_l1_label.text != "":
+                self.overlay_clickable_return_l1_label.text = ""
+                self.overlay_clickable_return_l2_label.text = ""
+                self.overlay_clickable_return_l3_label.text = ""
+                self.overlay_clickable_return_l4_label.text = ""
+                if globals.offline_multi:
+                    self.p2_overlay_clickable_return_l1_label.text = ""
+                    self.p2_overlay_clickable_return_l2_label.text = ""
+                    self.p2_overlay_clickable_return_l3_label.text = ""
+                    self.p2_overlay_clickable_return_l4_label.text = ""
 
         # Overlay editing
         self.mineral_text = ("Mineral: " + str(round(globals.player1_lv1_res, 1)) + " (" + str(
@@ -403,10 +421,10 @@ class game_window(pyglet.window.Window):
             self.p2_oil_text = ("Oil: " + str(round(globals.player2_lv3_res, 1)) + " (" + str(
                 round(globals.player2_lv3_gen, 2)) + "/s)")  # ℤens
             self.p2_overlay_oil_label.text = self.p2_oil_text
-            self.p2_selection_text_temp = str(game_window_run.player_one.get_select()).split("'")
-            self.p2_selection_text_temp = str((self.selection_text_temp[1])[8:])
-            self.p2_selection_text = "Selection: " + str(self.selection_text_temp)
-            self.p2_overlay_selection_label.text = self.selection_text
+            self.p2_selection_text_temp = str(game_window_run.player_two.get_select()).split("'")
+            self.p2_selection_text_temp = str((self.p2_selection_text_temp[1])[8:])
+            self.p2_selection_text = "Selection: " + str(self.p2_selection_text_temp)
+            self.p2_overlay_selection_label.text = self.p2_selection_text
             # Definitions for selecting and tracking data on objects
             self.p2_clickable_text = "Mouse last selected: " + self.clickable_text_temp
             self.p2_overlay_clickable_label.text = self.clickable_text
@@ -431,6 +449,7 @@ class game_window(pyglet.window.Window):
 
     # @staticmethod
     def on_key_press(self, symbol, modifiers):
+        print(symbol)
         if symbol == key.ENTER:
             globals.code = self.input_text.upper()
             self.input_text = ''
@@ -448,15 +467,16 @@ class game_window(pyglet.window.Window):
         elif symbol == key.BACKSPACE:
             self.input_text = self.input_text[:-1]
 
+        if symbol == key.LEFT:  # TODO: choose whether the menu function buttons should be the same
+                                # TODO: or different for each player (only one player's building can be accessed at once)
+            if self.clicked_object is not None:
+                if self.clicked_object.get_needs_menu():
+                    self.clicked_object.key_left_func()
+
         if symbol == key.RIGHT:
             if self.clicked_object is not None:
                 if self.clicked_object.get_needs_menu():
                     self.clicked_object.key_right_func()
-
-        if symbol == key.LEFT:
-            if self.clicked_object is not None:
-                if self.clicked_object.get_needs_menu():
-                    self.clicked_object.key_left_func()
 
         if symbol == key.ENTER or symbol == key.RETURN:
             if self.clicked_object is not None:

@@ -172,6 +172,7 @@ class TileBG(pyglet.shapes.Rectangle):
 class Building(TileObject):
     def __init__(self, *args, **kwargs):
         super().__init__(img=building_placeholder_image, *args, **kwargs)
+        self.class_type = "Building"
         self.batch = globals.building_batch
         self.max_health = 1000
         self.health = self.max_health
@@ -290,6 +291,7 @@ class Troop(TileObject):
     def __init__(self, *args, **kwargs):
         super().__init__(img=troop_placeholder_image, *args, **kwargs)
         # General Identifiers
+        self.class_type = "Troop"
         self.object_type = "Troop"
         self.overlay_name = "Null"
         self.owner_id = None
@@ -805,7 +807,7 @@ class HQ(Building):
         pass
 
 # Industry buildings
-class Drill(Building):
+class Drill(Building): # TODO: complete and ensure all objects work correctly with player 2, incorrect colouring for P2 confirmed.
     overlay_name = "Drill"
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)#img=drill_image,
@@ -1309,18 +1311,32 @@ class Player(TileObject):
                 self.down_key = key.K
                 self.right_key = key.L
                 self.build_key = key.M
-                self.call_key = key.NUM_0
 
-                self.zero_key = key.NUM_DECIMAL
-                self.one_key = key.NUM_1
-                self.two_key = key.NUM_2
-                self.three_key = key.NUM_3
-                self.four_key = key.NUM_4
-                self.five_key = key.NUM_5
-                self.six_key = key.NUM_6
-                self.seven_key = key.NUM_7
-                self.eight_key = key.NUM_8
-                self.nine_key = key.NUM_9
+                if globals.distribution:
+                    self.zero_key = key.NUM_0
+                    self.one_key = key.NUM_1
+                    self.two_key = key.NUM_2
+                    self.three_key = key.NUM_3
+                    self.four_key = key.NUM_4
+                    self.five_key = key.NUM_5
+                    self.six_key = key.NUM_6
+                    self.seven_key = key.NUM_7
+                    self.eight_key = key.NUM_8
+                    self.nine_key = key.NUM_9
+                    self.call_key = key.NUM_DECIMAL
+
+                else:
+                    self.zero_key = 65379
+                    self.one_key = 65367
+                    self.two_key = 65364
+                    self.three_key = 65366
+                    self.four_key = 65361
+                    self.five_key = 51539607552
+                    self.six_key = 65363
+                    self.seven_key = 65360
+                    self.eight_key = 65362
+                    self.nine_key = 65365
+                    self.call_key = 65535
 
     def get_id(self):
         if self.id != None:
@@ -1371,10 +1387,13 @@ class Player(TileObject):
             self.select_text = "Target"
 
         if globals.key_handler[self.call_key] and self.call_counter == 0:
-            for i in globals.troop_objects:
-                if i.get_owner() == 1:
-                    i.pathfind((self.x, self.y))
-            self.call_counter += 1 * dt
+            if globals.clickable is not None and globals.clickable.get_owner() == self.num and globals.clickable.class_type == "Troop":
+                globals.clickable.pathfind((self.x, self.y))
+
+            # for i in globals.troop_objects:
+            #     if i.get_owner() == 1:
+            #         i.pathfind((self.x, self.y))
+            # self.call_counter += 1 * dt
 
         if globals.key_handler[self.up_key]:
             if self.scounter == 0:
