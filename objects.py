@@ -2,11 +2,14 @@ import os
 import math
 import pyglet
 from pyglet.window import key, mouse
-import secrets
+import secrets  # Used for better randomness
+import random  # Used to save time complexity for common actions
 import globals
 import animations.animations
 
-building_placeholder_image = pyglet.image.load("Placeholder-building.png")
+random.seed(a=os.urandom(1024))  # Used to drastically reduce predictability and therefore chance of abusing of the RNG
+
+building_placeholder_image = pyglet.image.load("Building-placeholder.png")
 building_placeholder_image.anchor_x = 10
 building_placeholder_image.anchor_y = 10
 
@@ -14,19 +17,23 @@ troop_placeholder_image = pyglet.image.load("Troop-placeholder.png")
 troop_placeholder_image.anchor_x = 10
 troop_placeholder_image.anchor_y = 10
 
-player_image = pyglet.image.load("Test-sprite.png")
+player_image = pyglet.image.load("P1-sprite.png")
 player_image.anchor_x = 10
 player_image.anchor_y = 10
 
-drill_image = pyglet.image.load("Building test sprite-drill.png")
+player_2_image = pyglet.image.load("P2-sprite.png")
+player_2_image.anchor_x = 10
+player_2_image.anchor_y = 10
+
+drill_image = pyglet.image.load("Drill-sprite.png")
 drill_image.anchor_x = 10
 drill_image.anchor_y = 10
 
-refinery_image = pyglet.image.load("Refinery.png")
+refinery_image = pyglet.image.load("Refinery-sprite.png")
 refinery_image.anchor_x = 10
 refinery_image.anchor_y = 10
 
-turret_image = pyglet.image.load("Strat_UN Turret.png")
+turret_image = pyglet.image.load("Basic-turret-sprite.png")
 turret_image.anchor_x = 10
 turret_image.anchor_y = 10
 
@@ -38,9 +45,13 @@ dev_tank_image = pyglet.image.load("Dev-tank-sprite-60.png")
 dev_tank_image.anchor_x = 15
 dev_tank_image.anchor_y = 30
 
-infantry_image = pyglet.image.load("Basic-infantry.png")
+infantry_image = pyglet.image.load("Basic-infantry-sprite.png")
 infantry_image.anchor_x = 10
 infantry_image.anchor_y = 10
+
+sniper_image = pyglet.image.load("Sniper-Sprite.png")
+sniper_image.anchor_x = 10
+sniper_image.anchor_y = 10
 
 #drill_ani = pyglet.resource.animation("Drill_animation.gif")
 
@@ -161,6 +172,7 @@ class TileBG(pyglet.shapes.Rectangle):
 class Building(TileObject):
     def __init__(self, *args, **kwargs):
         super().__init__(img=building_placeholder_image, *args, **kwargs)
+        self.batch = globals.building_batch
         self.max_health = 1000
         self.health = self.max_health
         self.object_type = "Building"
@@ -176,6 +188,7 @@ class Building(TileObject):
         self.regen = 0
         self.range = -1
         self.damage = 50
+        self.armour_pen = 0
         self.first_burst = True
         self.targeting = False
         self.auto_targeting = "N/A"
@@ -197,7 +210,8 @@ class Building(TileObject):
     def enter_func(self):
         pass
 
-    def hit(self, damage, imm_strength=None, dot_strength=None):
+    def hit(self, damage, imm_strength=None, dot_strength=None, armour_pen=0):
+        pierced = damage * min((1 - (self.armour / 100) + (self.armour_pen / 100)), 1)
         if self.shield > 0:
             self.shield -= damage
             damage = 0
@@ -205,16 +219,11 @@ class Building(TileObject):
                 damage = self.shield * -1
                 self.shield = 0
 
+        elif self.shield <= 0:
+            self.health -= pierced
+
         if dot_strength != None:
             self.dot_damage += dot_strength
-
-        if self.shield <= 0:
-            pierced = damage * (1 - (self.armour / 100))
-            self.health -= pierced
-
-        elif self.shield <= 0:
-            pierced = damage * (1 - (self.armour / 100))
-            self.health -= pierced
 
     def shield_regen(self, dt):
         if self.shield < self.max_shield:
@@ -291,9 +300,11 @@ class Troop(TileObject):
         # Defence characteristics
         self.max_health = 250
         self.health = self.max_health
+        self.h_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 22), 20, 2, (0, 255, 0), batch=globals.bar_batch)
         self.armour = 0
         self.max_shield = 0
         self.shield = self.max_shield
+        self.s_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 20), 20, 2, (0, 0, 255), batch=globals.bar_batch)
         self.regen = 0
         # Movement and pathfinding characteristics
         self.accel = 0.2
@@ -311,6 +322,7 @@ class Troop(TileObject):
         self.target_type_allowed = ("Troop", "Preferred")
         self.target_type = None #Building or troop
         self.damage = 50
+        self.armour_pen = 0
         self.range = 50
         self.fire_rate = 100 # num/255 per second
         self.first_burst = True
@@ -370,31 +382,31 @@ class Troop(TileObject):
     def pathfind(self, target_coords=(550, 550)):
         self.cpath = []
         self.ctarget = None
-        print("beginning pathfinding to: " + str(target_coords))
+        # print("beginning pathfinding to: " + str(target_coords)) # used for debugging, same applies for lines marked 'D'
         astar_start_coords = self.get_astar_coords(self.x, self.y)
         astar_target_coords = self.get_astar_coords(target_coords[0], target_coords[1])
-        print("a*" + str(self.get_astar_coords(self.x, self.y)))
+        # print("a*" + str(self.get_astar_coords(self.x, self.y))) # D
         start = globals.astar_matrix.node(astar_start_coords[0], (astar_start_coords[1] - 1))
         end = globals.astar_matrix.node(int(astar_target_coords[0]), int((astar_target_coords[1] - 1)))
         path, runs = globals.finder.find_path(start, end, globals.astar_matrix)
-        print("runs: " + str(runs))
+        # print("runs: " + str(runs)) # D
         counter = 0
         for i in path:
             self.cpath.append([])
-            print(i)
+            # print(i) # D
             #print(path)
             for j in i:
                 if j == 0:
                     temp = (j * 20) + 10
-                else: #j == 1
+                else:
                     temp = (j * 20) + 10
                 self.cpath[counter].append(int(temp))
             counter += 1
         del self.cpath[0]
         for i in self.cpath:
             i[1] += 20
-        print(self.cpath)
-        print(globals.astar_matrix.grid_str(path=path, start=start, end=end))
+        # print(self.cpath) # D
+        # print(globals.astar_matrix.grid_str(path=path, start=start, end=end)) # D
         self.ctarget = self.cpath[0]
         globals.astar_matrix.cleanup()
 
@@ -405,14 +417,13 @@ class Troop(TileObject):
             self.range_sort(globals.building_objects)
             for i in self.auto_targeting_array:
                 if i.get_owner() != self.owner_num and i.get_range() < self.range:
-                    # print("found target" + str(i))
+                    # print("found target" + str(i)) # D
                     self.pathfind((i.get_x(), i.get_y()))
                     break
 
             if self.targeted == None:
                 for i in self.auto_targeting_array:
                     if i.get_owner() != self.owner_num:
-                        # print("found target" + str(i))
                         self.pathfind((i.get_x(), i.get_y()))
                         break
 
@@ -420,14 +431,12 @@ class Troop(TileObject):
             self.range_sort(globals.troop_objects)
             for i in self.auto_targeting_array:
                 if i.get_owner() != self.owner_num and i.get_range() < self.range:
-                    # print("found target" + str(i))
                     self.pathfind((i.get_x(), i.get_y()))
                     break
 
             if self.targeted == None:
                 for i in self.auto_targeting_array:
                     if i.get_owner() != self.owner_num:
-                        # print("found target" + str(i))
                         self.pathfind((i.get_x(), i.get_y()))
                         break
 
@@ -436,14 +445,12 @@ class Troop(TileObject):
             self.range_sort(globals.building_objects)
             for i in self.auto_targeting_array:
                 if i.get_owner() != self.owner_num and i.get_range() < self.range:
-                    # print("found target" + str(i))
                     self.pathfind((i.get_x(), i.get_y()))
                     break
 
             if self.targeted == None:
                 for i in self.auto_targeting_array:
                     if i.get_owner() != self.owner_num:
-                        # print("found target" + str(i))
                         self.pathfind((i.get_x(), i.get_y()))
                         break
 
@@ -452,18 +459,17 @@ class Troop(TileObject):
             self.range_sort(globals.troop_objects)
             for i in self.auto_targeting_array:
                 if i.get_owner() != self.owner_num and i.get_range() < self.range:
-                    # print("found target" + str(i))
                     self.pathfind((i.get_x(), i.get_y()))
                     break
 
             if self.targeted == None:
                 for i in self.auto_targeting_array:
                     if i.get_owner() != self.owner_num:
-                        # print("found target" + str(i))
                         self.pathfind((i.get_x(), i.get_y()))
                         break
 
-    def hit(self, damage, imm_strength=None, dot_strength=None):
+    def hit(self, damage, imm_strength=None, dot_strength=None, armour_pen=0):
+        pierced = damage * min((1 - (self.armour / 100) + (self.armour_pen / 100)), 1)
         if self.shield > 0:
             self.shield -= damage
             damage = 0
@@ -471,16 +477,15 @@ class Troop(TileObject):
                 damage = self.shield * -1
                 self.shield = 0
 
-        if imm_strength != None:
-            temp = self.speed
-            self.speed -= (self.speed * imm_strength)
+        elif self.shield <= 0:
+            self.health -= pierced
 
         if dot_strength != None:
             self.dot_damage += dot_strength
 
-        if self.shield <= 0:
-            pierced = damage * (1 - (self.armour / 100))
-            self.health -= pierced
+        if imm_strength != None:
+            temp = self.speed
+            self.speed -= (self.speed * imm_strength)
 
     def shield_regen(self, dt):
         if self.shield < self.max_shield:
@@ -498,7 +503,7 @@ class Troop(TileObject):
     def move(self, dt):
         if self.ctarget != None:
             if self.firstpathstep:
-                print("pathing to: " + str(self.ctarget))
+                # print("pathing to: " + str(self.ctarget)) # D
                 self.firstpathstep = False
             rawangle = None
             if self.speed < self.topspeed:
@@ -558,11 +563,11 @@ class Troop(TileObject):
                         self.ctarget = self.cpath[0]
                     else:
                         self.speed = 0
-            if self.firstpathstep:
-                print("angle: " + str(rawangle))
+            # if self.firstpathstep: # D
+                # print("angle: " + str(rawangle)) # D NOTE: angle is recorded in radians
 
     def fire(self):
-        self.targeted.hit(self.damage)
+        self.targeted.hit(damage=self.damage, armour_pen=self.armour_pen)
         self.targeted.death_check()
 
     def shoot(self, dt):
@@ -596,7 +601,6 @@ class Troop(TileObject):
             if self.target_type_allowed[0] == "Building":
                 for i in globals.building_objects:
                     if i.get_owner() != self.owner_num and self.targeting is False:
-                        #print("found target" + str(i))
                         self.targetx = i.get_x()
                         self.targety = i.get_y()
                         if math.sqrt(((self.x - self.targetx)**2) + ((self.y - self.targety)**2)) <= self.range:
@@ -610,7 +614,6 @@ class Troop(TileObject):
             elif self.target_type_allowed[0] == "Troop":
                 for i in globals.troop_objects:
                     if i.get_owner() != self.owner_num and self.targeting is False:
-                        #print("found target" + str(i))
                         self.targetx = i.get_x()
                         self.targety = i.get_y()
                         if math.sqrt(((self.x - self.targetx)**2) + ((self.y - self.targety)**2)) <= self.range:
@@ -624,7 +627,6 @@ class Troop(TileObject):
             if self.target_type_allowed[0] == "Troop" and self.target_type_allowed[1] == "Preferred" and not self.targeting:
                 for i in globals.building_objects:
                     if i.get_owner() != self.owner_num and self.targeting is False:
-                        #print("found target" + str(i))
                         self.targetx = i.get_x()
                         self.targety = i.get_y()
                         if math.sqrt(((self.x - self.targetx)**2) + ((self.y - self.targety)**2)) <= self.range:
@@ -638,7 +640,6 @@ class Troop(TileObject):
             if self.target_type_allowed[0] == "Building" and self.target_type_allowed[1] == "Preferred" and not self.targeting:
                 for i in globals.troop_objects:
                     if i.get_owner() != self.owner_num and self.targeting is False:
-                        #print("found target" + str(i))
                         self.targetx = i.get_x()
                         self.targety = i.get_y()
                         if math.sqrt(((self.x - self.targetx)**2) + ((self.y - self.targety)**2)) <= self.range:
@@ -679,7 +680,6 @@ class Troop(TileObject):
                 if self.first_burst:
                     self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, self.tracer_width, color=self.tracer_colour)
                     self.first_burst = False
-                #print(self.trace_opacity)
                 self.tracer.opacity = self.trace_opacity
 
                 if self.auto_targeting and self.targeting and self.speed != 0:
@@ -691,8 +691,27 @@ class Troop(TileObject):
     def set_targety(self, var):
         self.targety = var
 
+    def bars(self):
+        if self.health == self.max_health and self.shield == self.max_shield:
+            self.h_bar.opacity = 0
+            self.s_bar.opacity = 0
+        else:
+            self.h_bar.opacity = 255
+            self.s_bar.opacity = 255
+
+            self.h_bar.width = round((self.health / self.max_health) * 20)
+            self.h_bar.x = (self.x - 10)
+            self.h_bar.y = (self.y + 22)
+            if self.max_shield > 0:
+                self.s_bar.width = round((self.shield / self.max_shield) * 20)
+                self.s_bar.x = (self.x - 10)
+                self.s_bar.y = (self.y + 20)
+            else:
+                self.s_bar.width = 0
+
     def update(self, dt):
         self.shoot(dt)
+        self.bars()
         if self.targeted is None or not self.auto_targeting:
             self.move(dt)
         if not self.targeting and not self.auto_shooting and self.auto_targeting and self.ctarget == None:
@@ -796,7 +815,6 @@ class Drill(Building):
         self.overlay_name = "Drill"
         self.building_type = "Industry"
         self.mine_rate = secrets.choice([2.5, 2.75, 3, 3.25, 3.5])
-        globals.player1_lv1_gen += self.mine_rate
         self.built = False
         self.activation_timer = 10.0
 
@@ -807,8 +825,12 @@ class Drill(Building):
                 self.image = drill_ani
                 # self.x -= 10
                 # self.y -= 10 # done because the anchor for position changes from the centre to bottom left corner
-                self.color = (0, 255, 0)
                 self.built = True
+                if self.owner_num == 1:
+                    globals.player1_lv1_gen += self.mine_rate
+                elif globals.offline_multi:
+                    globals.player2_lv1_gen += self.mine_rate
+
         else:
             mined = self.mine_rate * dt
             #print(self.owner_num)
@@ -830,8 +852,6 @@ class Refinery(Building):
         self.overlay_name = "Refinery"
         self.building_type = "Industry"
         self.process_rate = 0.75
-        globals.player1_lv1_gen -= (10 * self.process_rate)
-        globals.player1_lv2_gen += self.process_rate
         self.built = False
         self.activation_timer = 10.0
 
@@ -842,15 +862,23 @@ class Refinery(Building):
                 #self.image = drill_ani
                 # self.x -= 10
                 # self.y -= 10 # done because the anchor for position changes from the centre to bottom left corner
-                self.color = (0, 255, 0)
                 self.built = True
+
+                if self.owner_num == 1:
+                    globals.player1_lv1_gen -= (10 * self.process_rate)
+                    globals.player1_lv2_gen += self.process_rate
+                elif globals.offline_multi:
+                    globals.player2_lv1_gen -= (10 * self.process_rate)
+                    globals.player2_lv2_gen += self.process_rate
+
         else:
             purified = self.process_rate * dt
             # print(self.owner_num)
             if self.owner_num == 1:
                 globals.player1_lv2_res += purified
                 globals.player1_lv1_res -= 10 * purified
-            if self.owner_num == 2:
+            elif globals.offline_multi:
+                globals.player2_lv2_res += purified
                 globals.player2_lv1_res -= 10 * purified
 
 
@@ -865,7 +893,6 @@ class Oil_Rig(Building):
         self.building_type = "Industry"
         self.process_rate = 0.75
         self.prev_process_rate = self.process_rate
-        globals.player1_lv3_gen += self.process_rate
         self.built = False
         self.activation_timer = 10.0
 
@@ -873,20 +900,19 @@ class Oil_Rig(Building):
         if not self.built:
             self.activation_timer -= dt
             if self.activation_timer <= 0:
-                # self.image = drill_ani
-                # self.x -= 10
-                # self.y -= 10 # done because the anchor for position changes from the centre to bottom left corner
-                self.color = (0, 255, 0)
                 self.built = True
+                if self.owner_num == 1:
+                    globals.player1_lv3_gen += self.process_rate
+
+                elif globals.offline_multi:
+                    globals.player2_lv3_gen += self.process_rate
         else:
             self.prev_process_rate = self.process_rate
             pumped = self.process_rate * dt
-            # print(self.owner_num)
             if self.owner_num == 1:
                 globals.player1_lv3_res += pumped
-            #     globals.player1_lv1_res -= 10 * pumped
-            # if self.owner_num == 2:
-            #     globals.player2_lv1_res -= 10 * pumped
+            elif globals.offline_multi:
+                globals.player2_lv3_res += pumped
             if secrets.randbelow(2) == 0:
                 self.process_rate -= dt * 0.3 # simulation of concentration of oil to be pumped changing
                 if self.process_rate < 0.5:
@@ -895,8 +921,14 @@ class Oil_Rig(Building):
                 self.process_rate += dt * 0.3
                 if self.process_rate < 1.5:
                     self.process_rate == 1.5
-            globals.player1_lv3_gen -= self.prev_process_rate
-            globals.player1_lv3_gen += self.process_rate
+
+            if self.owner_num == 1:
+                globals.player1_lv3_gen -= self.prev_process_rate
+                globals.player1_lv3_gen += self.process_rate
+
+            elif globals.offline_multi:
+                globals.player2_lv3_gen -= self.prev_process_rate
+                globals.player2_lv3_gen += self.process_rate
 
 # Workshop
 
@@ -1063,13 +1095,13 @@ class Barracks(Building):
         self.selected_index += 1
         if self.selected_index >= len(self.ol_selection):
             self.selected_index = 0
-            print((self.ol_selection[self.selected_index].get_overlay_name(self)))
+            # print((self.ol_selection[self.selected_index].get_overlay_name(self)))
 
     def key_left_func(self):
         self.selected_index -= 1
         if self.selected_index < 0:
             self.selected_index = (len(self.ol_selection) - 1)
-            print((self.ol_selection[self.selected_index].get_overlay_name(self)))
+            # print((self.ol_selection[self.selected_index].get_overlay_name(self)))
 
     def enter_func(self):
         # print("started training")
@@ -1085,13 +1117,20 @@ class Barracks(Building):
             globals.troop_objects.append((self.queue[0])(x=self.x, y=self.y))
             globals.troop_objects[(len(globals.troop_objects) - 1)]\
                 .set_owner((self.get_owner_id(), self.get_owner()))
+            move_x = self.x
+            move_y = self.y
+            while move_x == self.x and move_y == self.y and move_x <= globals.screenresx and move_y <= globals.screenresy:
+                move_x = random.randint(self.x-100, self.x+100)
+                move_y = random.randint(self.y-100, self.y+100)
+            globals.troop_objects[(len(globals.troop_objects) - 1)] \
+                .pathfind((move_x, move_y))
             #TODO: make troop move away from the building to prevent stacking
             del self.queue[0]
             if self.queue != []:
                 self.train_time = 0.000001
             else:
                 self.train_time = 0
-            print("trained")
+            # print("trained")
 #Troops
 
 class Dev_Tank(Troop):
@@ -1099,18 +1138,19 @@ class Dev_Tank(Troop):
     training_time = 120
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.batch = globals.large_troop_batch
         self.image = dev_tank_image
         self.name = "Dev_Tank"
         self.troop_type = "EMP Medium Tank"
         self.overlay_name = "Overloader"
-        self.fire_rate = 150
+        self.fire_rate = 100
         self.targetx = 500
         self.targety = 500
         self.tracer_colour = (129, 236, 236)
         self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 0, color=(129, 236, 236))
         self.trace_opacity = 255
         self.has_tracer = True
-        self.damage = 50
+        self.damage = 100
         self.range = 150
         self.lv = 1
         self.max_health = 3000
@@ -1127,7 +1167,7 @@ class Dev_Tank(Troop):
         self.targeted = None
 
         self.immobilizer = True
-        self.immobilizer_strength = 0.1
+        self.immobilizer_strength = 0.5
 
     def fire(self):
         self.targeted.hit(self.damage)
@@ -1144,6 +1184,7 @@ class Basic_infantry(Troop):
     training_time = 5
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.batch = globals.small_troop_batch
         self.image = infantry_image
         self.name = "Infantry"
         self.troop_type = "Light Infantry"
@@ -1185,11 +1226,11 @@ class Basic_infantry(Troop):
 class Sniper(Troop):
     overlay_name = "Sniper"
     training_time = 20
-    #TODO: finish sniper and make sprite to use
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.image = infantry_image
-        self.name = "Infantry"
+        self.batch = globals.small_troop_batch
+        self.image = sniper_image
+        self.name = "Sniper"
         self.troop_type = "Light Sniper Infantry"
         self.overlay_name = "Sniper"
         self.fire_rate = 50
@@ -1200,15 +1241,15 @@ class Sniper(Troop):
         self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 0, color=(129, 236, 236))
         self.trace_opacity = 255
         self.has_tracer = True
-        self.damage = 350
+        self.damage = 450
         self.range = 50
         self.lv = 1
-        self.max_health = 200
+        self.max_health = 500
         self.health = self.max_health
-        self.accel = 2.5
+        self.accel = 0.25
         self.topspeed = 5
         self.speed = 0
-        self.armour = 2
+        self.armour = 10
         self.max_shield = 0
         self.shield = self.max_shield
         self.regen = 0
@@ -1225,7 +1266,7 @@ class Player(TileObject):
         self.num = -1
         self.id = None
         self.pixels = 20
-        self.key_handler = key.KeyStateHandler()
+        # self.key_handler = key.KeyStateHandler()
         self.scounter = 0
         self.bcounter = 0
         self.call_counter = 0
@@ -1234,12 +1275,52 @@ class Player(TileObject):
         self.select_text = "Drill"
         globals.player_list.append(self)
 
-    def set_id(self, new_name, num=1):
+        #controls
+        self.up_key = key.W
+        self.left_key = key.A
+        self.down_key = key.S
+        self.right_key = key.D
+        self.build_key = key.B
+        self.call_key = key.EQUAL
+
+        self.zero_key = key._0
+        self.one_key = key._1
+        self.two_key = key._2
+        self.three_key = key._3
+        self.four_key = key._4
+        self.five_key = key._5
+        self.six_key = key._6
+        self.seven_key = key._7
+        self.eight_key = key._8
+        self.nine_key = key._9
+
+    def set_id(self, new_name, num=1, offline=True):
         """sets the name for the player, use ONCE per player ONLY"""
         if self.id == None:
             self.id = str(new_name)
             self.num = num
             globals.player_list.append(str(new_name))
+
+        if num == 2:
+            self.image = player_2_image
+            if globals.offline_multi:
+                self.up_key = key.I
+                self.left_key = key.J
+                self.down_key = key.K
+                self.right_key = key.L
+                self.build_key = key.M
+                self.call_key = key.NUM_0
+
+                self.zero_key = key.NUM_DECIMAL
+                self.one_key = key.NUM_1
+                self.two_key = key.NUM_2
+                self.three_key = key.NUM_3
+                self.four_key = key.NUM_4
+                self.five_key = key.NUM_5
+                self.six_key = key.NUM_6
+                self.seven_key = key.NUM_7
+                self.eight_key = key.NUM_8
+                self.nine_key = key.NUM_9
 
     def get_id(self):
         if self.id != None:
@@ -1264,62 +1345,62 @@ class Player(TileObject):
 
     def update(self, dt):
         super(Player, self).update(dt)
-        if self.key_handler[key._1]:
+        if globals.key_handler[self.one_key]:
             self.selection = Drill
             self.select_text = "Drill"
 
-        if self.key_handler[key._2]:
+        if globals.key_handler[self.two_key]:
             self.selection = Refinery
             self.select_text = "Refinery"
 
-        if self.key_handler[key._3]:
+        if globals.key_handler[self.three_key]:
             self.selection = Basic_Turret
             self.select_text = "Basic_Turret"
 
-        if self.key_handler[key._4]:
+        if globals.key_handler[self.four_key]:
             self.selection = Oil_Rig
             self.select_text = "Oil_Rig"
 
-        if self.key_handler[key._5]:
+        if globals.key_handler[self.five_key]:
             self.selection = Barracks
             self.select_text = "Barracks"
 
 
-        if self.key_handler[key._0]:
+        if globals.key_handler[self.zero_key]:
             self.selection = Target
             self.select_text = "Target"
 
-        if self.key_handler[key.EQUAL] and self.call_counter == 0:
+        if globals.key_handler[self.call_key] and self.call_counter == 0:
             for i in globals.troop_objects:
                 if i.get_owner() == 1:
                     i.pathfind((self.x, self.y))
             self.call_counter += 1 * dt
 
-        if self.key_handler[key.W]:
-            if self.key_handler[key.W] and self.scounter == 0:
+        if globals.key_handler[self.up_key]:
+            if self.scounter == 0:
                 self.y += self.pixels
             if self.scounter == 0:
                 self.scounter += 1 * dt
 
-        if self.key_handler[key.A]:
-            if self.key_handler[key.A] and self.scounter == 0:
+        if globals.key_handler[self.left_key]:
+            if self.scounter == 0:
                 self.x -= self.pixels
             if self.scounter == 0:
                 self.scounter += 1 * dt
 
-        if self.key_handler[key.S]:
-            if self.key_handler[key.S] and self.scounter == 0:
+        if globals.key_handler[self.down_key]:
+            if self.scounter == 0:
                 self.y -= self.pixels
             if self.scounter == 0:
                 self.scounter += 1 * dt
 
-        if self.key_handler[key.D]:
-            if self.key_handler[key.D] and self.scounter == 0:
+        if globals.key_handler[self.right_key]:
+            if self.scounter == 0:
                 self.x += self.pixels
             if self.scounter == 0:
                 self.scounter += 1 * dt
 
-        if self.key_handler[key.B] and self.bcounter == 0:  # create some sort of build function
+        if globals.key_handler[self.build_key] and self.bcounter == 0:  # create some sort of build function
             costs = globals.building_costs[self.select_text]
             if globals.player1_lv1_res >= costs[0] and\
                 globals.player1_lv2_res >= costs[1] and\
