@@ -9,47 +9,49 @@ import animations.animations
 
 random.seed(a=os.urandom(1024))  # Used to drastically reduce predictability and therefore chance of abusing of the RNG
 
-building_placeholder_image = pyglet.image.load("Building-placeholder.png")
+grid_set = []
+
+building_placeholder_image = pyglet.image.load("sprite/Building-placeholder.png")
 building_placeholder_image.anchor_x = 10
 building_placeholder_image.anchor_y = 10
 
-troop_placeholder_image = pyglet.image.load("Troop-placeholder.png")
+troop_placeholder_image = pyglet.image.load("sprite/Troop-placeholder.png")
 troop_placeholder_image.anchor_x = 10
 troop_placeholder_image.anchor_y = 10
 
-player_image = pyglet.image.load("P1-sprite.png")
+player_image = pyglet.image.load("sprite/P1-sprite.png")
 player_image.anchor_x = 10
 player_image.anchor_y = 10
 
-player_2_image = pyglet.image.load("P2-sprite.png")
+player_2_image = pyglet.image.load("sprite/P2-sprite.png")
 player_2_image.anchor_x = 10
 player_2_image.anchor_y = 10
 
-drill_image = pyglet.image.load("Drill-sprite.png")
+drill_image = pyglet.image.load("sprite/Drill-sprite.png")
 drill_image.anchor_x = 10
 drill_image.anchor_y = 10
 
-refinery_image = pyglet.image.load("Refinery-sprite.png")
+refinery_image = pyglet.image.load("sprite/Refinery-sprite.png")
 refinery_image.anchor_x = 10
 refinery_image.anchor_y = 10
 
-turret_image = pyglet.image.load("Basic-turret-sprite.png")
+turret_image = pyglet.image.load("sprite/Basic-turret-sprite.png")
 turret_image.anchor_x = 10
 turret_image.anchor_y = 10
 
-barracks_image = pyglet.image.load("Barracks-20px.png")
+barracks_image = pyglet.image.load("sprite/Barracks-20px.png")
 barracks_image.anchor_x = 10
 barracks_image.anchor_y = 10
 
-dev_tank_image = pyglet.image.load("Dev-tank-sprite-60.png")
+dev_tank_image = pyglet.image.load("sprite/Dev-tank-sprite-60.png")
 dev_tank_image.anchor_x = 15
 dev_tank_image.anchor_y = 30
 
-infantry_image = pyglet.image.load("Basic-infantry-sprite.png")
+infantry_image = pyglet.image.load("sprite/Basic-infantry-sprite.png")
 infantry_image.anchor_x = 10
 infantry_image.anchor_y = 10
 
-sniper_image = pyglet.image.load("Sniper-Sprite.png")
+sniper_image = pyglet.image.load("sprite/Sniper-Sprite.png")
 sniper_image.anchor_x = 10
 sniper_image.anchor_y = 10
 
@@ -156,7 +158,7 @@ class TileBG(pyglet.shapes.Rectangle):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        self.modifier = 1
         self.owner = ""
         self.barrier = False
 
@@ -166,8 +168,20 @@ class TileBG(pyglet.shapes.Rectangle):
     def remove_barrier(self):
         self.barrier = False
 
+    def set_modifier(self, new_mod):
+        self.modifier = new_mod
+
+    def get_modifier(self):
+        return self.modifier
+
     def get_barrier_state(self):
         return self.barrier
+
+    def get_x(self):
+        return self.x
+
+    def get_y(self):
+        return self.y
 
 class Building(TileObject):
     def __init__(self, *args, **kwargs):
@@ -273,13 +287,13 @@ class Building(TileObject):
         self.owner_id = new_owner_id_set[0]
         self.owner_num = new_owner_id_set[1]
         if self.owner_num == 1:
-            self.color = (150, 200, 255)
+            self.color = globals.p1_color
         elif self.owner_num == 2:
-            self.color = (255, 100, 100)
+            self.color = globals.p2_color
         elif self.owner_num == 3:
-            self.color = (160, 255, 100)
+            self.color = globals.p3_color
         elif self.owner_num == 4:
-            self.color = (255, 255, 100)
+            self.color = globals.p4_color
         #print(self.owner)
 
     def hit(self, damage):
@@ -317,6 +331,9 @@ class Troop(TileObject):
         self.targeted_p = None
         self.cpath = [] # c for 'current' path that it is using
         self.ctarget = None # current target coords
+        self.last_tile = None
+        self.current_tile = None
+        self.current_mod = 1
         self.firstpathstep = True
         self.auto_shooting = False
         # Weapon characteristics
@@ -353,19 +370,6 @@ class Troop(TileObject):
     def enter_func(self):
         pass
 
-    def set_owner(self, new_owner_id_set):
-        self.owner_id = new_owner_id_set[0]
-        self.owner_num = new_owner_id_set[1]
-        if self.owner_num == 1:
-            self.color = (150, 200, 255)
-        elif self.owner_num == 2:
-            self.color = (255, 100, 100)
-        elif self.owner_num == 3:
-            self.color = (160, 255, 100)
-        elif self.owner_num == 4:
-            self.color = (255, 255, 100)
-        #print(self.owner)
-
     def range_sort(self, array):
         self.auto_targeting_array = []
         for i in array:
@@ -385,31 +389,33 @@ class Troop(TileObject):
         self.cpath = []
         self.ctarget = None
         # print("beginning pathfinding to: " + str(target_coords)) # used for debugging, same applies for lines marked 'D'
-        astar_start_coords = self.get_astar_coords(self.x, self.y)
-        astar_target_coords = self.get_astar_coords(target_coords[0], target_coords[1])
+        astar_start_coords = self.get_astar_coords(self.x, globals.screenresy - self.y)
+        astar_target_coords = self.get_astar_coords(target_coords[0], globals.screenresy - target_coords[1])
         # print("a*" + str(self.get_astar_coords(self.x, self.y))) # D
-        start = globals.astar_matrix.node(astar_start_coords[0], (astar_start_coords[1] - 1))
-        end = globals.astar_matrix.node(int(astar_target_coords[0]), int((astar_target_coords[1] - 1)))
+        start = globals.astar_matrix.node(astar_start_coords[0], (astar_start_coords[1]))
+        end = globals.astar_matrix.node(int(astar_target_coords[0]), int((astar_target_coords[1])))
         path, runs = globals.finder.find_path(start, end, globals.astar_matrix)
+        # print(globals.astar_matrix.grid_str(path=path, start=start, end=end))# use this if you want to see the path in the console
         # print("runs: " + str(runs)) # D
         counter = 0
-        for i in path:
+        for counter, i in enumerate(path):
             self.cpath.append([])
             # print(i) # D
             #print(path)
-            for j in i:
-                if j == 0:
-                    temp = (j * 20) + 10
-                else:
-                    temp = (j * 20) + 10
+            for countj, j in enumerate(i):
+                if countj == 0:# x coord
+                    temp = ((j * 20) + 10)
+                else:# ycoord - 'flip' coord to make it compatable with pyglet
+                    temp = globals.screenresy - ((j * 20) + 10)
+
                 self.cpath[counter].append(int(temp))
-            counter += 1
-        del self.cpath[0]
-        for i in self.cpath:
-            i[1] += 20
+        # del self.cpath[0]
+        # for i in self.cpath:
+        #     i[1] += 20
         # print(self.cpath) # D
         # print(globals.astar_matrix.grid_str(path=path, start=start, end=end)) # D
-        self.ctarget = self.cpath[0]
+        if self.cpath != []:
+            self.ctarget = self.cpath[0]
         globals.astar_matrix.cleanup()
 
     def auto_target(self):
@@ -502,7 +508,26 @@ class Troop(TileObject):
             # self.x = -100000000
             # self.y = -100000000
 
+    def get_centred_coords(self, x, y):
+        x_remainder = x % 20
+        y_remainder = y % 20
+        x_centred = (x - x_remainder) + 10
+        y_centred = (y - y_remainder) + 10
+        return x_centred, y_centred
+
     def move(self, dt):
+        cur_tile = self.get_centred_coords(self.x, self.y)
+        if (self.last_tile != cur_tile or self.last_tile is None):
+            for i in globals.squares:
+                for j in i:
+                    if self.get_centred_coords(j.get_x(), j.get_y()) == cur_tile:
+                        self.current_tile = j
+                        self.last_tile = (self.current_tile.get_x(), self.current_tile.get_y())
+                        self.current_mod = self.current_tile.get_modifier()
+                        # print(self.current_mod)
+                        break
+
+
         if self.ctarget != None:
             if self.firstpathstep:
                 # print("pathing to: " + str(self.ctarget)) # D
@@ -530,27 +555,27 @@ class Troop(TileObject):
 
             if rawangle != None:
                 if self.x < self.ctarget[0] and self.y < self.ctarget[1]: #NE
-                    self.x += self.speed * math.cos(rawangle) * dt
-                    self.y -= self.speed * math.sin(rawangle) * dt
+                    self.x += self.speed * math.cos(rawangle) * dt * self.current_mod
+                    self.y -= self.speed * math.sin(rawangle) * dt * self.current_mod
                 if self.x < self.ctarget[0] and self.y > self.ctarget[1]: #SE
-                    self.x += self.speed * math.cos(rawangle) * dt
-                    self.y -= self.speed * math.sin(rawangle) * dt
+                    self.x += self.speed * math.cos(rawangle) * dt * self.current_mod
+                    self.y -= self.speed * math.sin(rawangle) * dt * self.current_mod
                 if self.x > self.ctarget[0] and self.y > self.ctarget[1]: #SW
-                    self.x -= self.speed * math.cos(rawangle) * dt
-                    self.y += self.speed * math.sin(rawangle) * dt
+                    self.x -= self.speed * math.cos(rawangle) * dt * self.current_mod
+                    self.y += self.speed * math.sin(rawangle) * dt * self.current_mod
                 if self.x > self.ctarget[0] and self.y < self.ctarget[1]: #NW
-                    self.x -= self.speed * math.cos(rawangle) * dt
-                    self.y += self.speed * math.sin(rawangle) * dt
+                    self.x -= self.speed * math.cos(rawangle) * dt * self.current_mod
+                    self.y += self.speed * math.sin(rawangle) * dt * self.current_mod
 
             else:
                 if self.ctarget[0] > self.x and self.ctarget[1] == self.y:
-                    self.x += self.speed * dt
+                    self.x += self.speed * dt * self.current_mod
                 elif self.ctarget[0] == self.x and self.ctarget[1] < self.y:
-                    self.y -= self.speed * dt
+                    self.y -= self.speed * dt * self.current_mod
                 elif self.ctarget[0] < self.x and self.ctarget[1] == self.y:
-                    self.x -= self.speed * dt
+                    self.x -= self.speed * dt * self.current_mod
                 elif self.ctarget[0] == self.x and self.ctarget[1] > self.y:
-                    self.y += self.speed * dt
+                    self.y += self.speed * dt * self.current_mod
 
             if math.sqrt(((self.x - self.ctarget[0]) ** 2) + ((self.y - self.ctarget[1]) ** 2)) <= 1:
                 self.x = self.ctarget[0]
@@ -565,6 +590,9 @@ class Troop(TileObject):
                         self.ctarget = self.cpath[0]
                     else:
                         self.speed = 0
+                        self.last_tile = None
+                        self.current_tile = None
+                        self.current_mod = 1
             # if self.firstpathstep: # D
                 # print("angle: " + str(rawangle)) # D NOTE: angle is recorded in radians
 
@@ -687,12 +715,6 @@ class Troop(TileObject):
                 if self.auto_targeting and self.targeting and self.speed != 0:
                     self.speed = 0
 
-    def set_targetx(self, var):
-        self.targetx = var
-
-    def set_targety(self, var):
-        self.targety = var
-
     def bars(self):
         if self.health == self.max_health and self.shield == self.max_shield:
             self.h_bar.opacity = 0
@@ -723,9 +745,30 @@ class Troop(TileObject):
         if self.max_shield > 0:
             self.shield_regen(dt)
 
+    def set_owner(self, new_owner_id_set):
+        self.owner_id = new_owner_id_set[0]
+        self.owner_num = new_owner_id_set[1]
+        if self.owner_num == 1:
+            self.color = globals.p1_color
+        elif self.owner_num == 2:
+            self.color = globals.p2_color
+        elif self.owner_num == 3:
+            self.color = globals.p3_color
+        elif self.owner_num == 4:
+            self.color = globals.p4_color
+        #print(self.owner)
+
+    def set_targetx(self, var):
+        self.targetx = var
+
+    def set_targety(self, var):
+        self.targety = var
+
     def get_astar_coords(self, x, y):
+        # print(x, y)
         astarx = int(((x - 10)/20))
         astary = int(((y - 10)/20))
+        # print(astarx, astary)
         return astarx, astary
 
     def get_distance(self, targetx, targety):

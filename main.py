@@ -1,5 +1,4 @@
 import random
-import math
 import inspect
 import secrets
 import pyglet
@@ -9,24 +8,24 @@ from pyglet.graphics import *
 import objects
 import animations
 import globals
-
-pyglet.font.add_file("BebasNeue-Regular.otf")
-# bebas_neue = pyglet.font.load("Bebas Neue")
-
 from pathfinding.core.diagonal_movement import DiagonalMovement
 from pathfinding.core.grid import Grid
 from pathfinding.finder.bi_a_star import BiAStarFinder
 
 finder = BiAStarFinder(diagonal_movement=DiagonalMovement.always)
 
+from map.prep import pixel_approx
+
+pyglet.font.add_file("BebasNeue-Regular.otf")
 
 class game_window(pyglet.window.Window):
     def __init__(self):
         super().__init__()  # self, game_window
         self.set_vsync(False)
-        self.player_image = pyglet.image.load("P1-sprite.png")
+        self.player_image = pyglet.image.load("sprite/P1-sprite.png")
         self.player_image.anchor_x = 10
         self.player_image.anchor_y = 10
+        self.set_minimum_size(globals.screenresx, globals.screenresy)
         self.set_size(globals.screenresx, globals.screenresy)
         self.player_one = objects.Player(x=550, y=550)
         self.player_one.set_id("Zestyy", 1)
@@ -37,15 +36,14 @@ class game_window(pyglet.window.Window):
             self.game_objects.append(self.player_two)
         globals.troop_objects.append(objects.Dev_Tank(x=410, y=490))
         globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Zestyy", 1))
-        # globals.troop_objects.append(objects.Dev_Tank(x=710, y=710))
-        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Guest", 2))
-        # globals.troop_objects.append(objects.Dev_Tank(x=990, y=210))
-        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Frenemy", 3))
-        # globals.troop_objects.append(objects.Dev_Tank(x=210, y=710))
-        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Pixie", 4))
-        # self.push_handlers(self.player_one)
+        globals.troop_objects.append(objects.Dev_Tank(x=710, y=710))
+        globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Guest", 2))
+        # globals.troop_objects.append(objects.Dev_Tank(x=1010, y=810))
+        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("P3", 3))
+        # globals.troop_objects.append(objects.Dev_Tank(x=110, y=510))
+        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("P4", 4))
         self.push_handlers(globals.key_handler)
-        self.squares, self.bg_batch = self.tiles_map()
+        globals.squares, globals.bg_batch = self.tiles_map()
         pyglet.clock.schedule_interval(self.update, 1 / 120.0)
         self.fps_display = pyglet.window.FPSDisplay(self)
         self.input_text = ''
@@ -54,12 +52,16 @@ class game_window(pyglet.window.Window):
         self.main_key_handler = key.KeyStateHandler()
         self.gen_overlay()
         # Data parts for overlay
+        self.show_grid = True
         self.show_overlay = False
         self.clicked_object = None
 
     def gen_overlay(self, xres=globals.screenresx, yres=globals.screenresy):
         #TODO: make overlay compatible with 2 player play, either if else 2 generations or let the original be generated then move
         if not globals.offline_multi:
+            self.ol_range = pyglet.shapes.Circle(x=0, y=0, radius=200, color=(255, 255, 255), batch=globals.overlay_batch)
+            self.ol_range.opacity = 50
+
             self.overlay_bg = pyglet.shapes.Rectangle(500, 0, 500, 300, (0, 0, 0), batch=globals.overlay_batch)
             self.overlay_bg.opacity = 150
             self.overlay_bg_frameh = pyglet.shapes.Line(500, 300, 1000, 300, 1, (255, 255, 255),
@@ -333,6 +335,7 @@ class game_window(pyglet.window.Window):
                 self.p2_clickable_owner_text_temp = (str(self.tracked_owner))
                 self.p2_clickable_targetbool_text_temp = ("Enabled" if self.clicked_object.get_targetbool() else "Disabled")
 
+
             if self.clicked_object.get_needs_menu():
                 if self.clicked_object.get_owner() == 1:
                     self.overlay_clickable_return_l1_label.text, self.overlay_clickable_return_l2_label.text, \
@@ -342,10 +345,11 @@ class game_window(pyglet.window.Window):
                         self.clicked_object.gen_overlay_text()[2], \
                         self.clicked_object.gen_overlay_text()[3]
 
-                    self.p2_overlay_clickable_return_l1_label.text = ""
-                    self.p2_overlay_clickable_return_l2_label.text = ""
-                    self.p2_overlay_clickable_return_l3_label.text = ""
-                    self.p2_overlay_clickable_return_l4_label.text = ""
+                    if globals.offline_multi:
+                        self.p2_overlay_clickable_return_l1_label.text = ""
+                        self.p2_overlay_clickable_return_l2_label.text = ""
+                        self.p2_overlay_clickable_return_l3_label.text = ""
+                        self.p2_overlay_clickable_return_l4_label.text = ""
 
                 elif globals.offline_multi and self.clicked_object.get_owner() == 2:
                     self.p2_overlay_clickable_return_l1_label.text, self.p2_overlay_clickable_return_l2_label.text, \
@@ -371,8 +375,26 @@ class game_window(pyglet.window.Window):
                     self.p2_overlay_clickable_return_l3_label.text = ""
                     self.p2_overlay_clickable_return_l4_label.text = ""
 
+            if self.clicked_object.get_range() > 0:
+                self.ol_range.anchor_x = self.clicked_object.get_x()
+                self.ol_range.anchor_y = self.clicked_object.get_y()
+                self.ol_range.radius = self.clicked_object.get_range()
+                if self.clicked_object.get_owner() == 1:
+                    self.ol_range.color = globals.p1_color
+                elif self.clicked_object.get_owner() == 2:
+                    self.ol_range.color = globals.p2_color
+                elif self.clicked_object.get_owner() == 3:
+                    self.ol_range.color = globals.p3_color
+                elif self.clicked_object.get_owner() == 4:
+                    self.ol_range.color = globals.p4_color
+
+            elif self.clicked_object.get_range() <= 0:
+                self.ol_range.anchor_x = 10000
+
+
         if self.clicked_object is None:
             globals.clickable = None
+            self.ol_range.anchor_x = 10000
             if self.overlay_clickable_return_l1_label.text != "":
                 self.overlay_clickable_return_l1_label.text = ""
                 self.overlay_clickable_return_l2_label.text = ""
@@ -437,7 +459,6 @@ class game_window(pyglet.window.Window):
             self.p2_tracked_shield = 0
             self.p2_tracked_owner = None
 
-
     def on_text(self, text):
         if self.firstt == True and self.input_text == 't':
             self.input_text = ''
@@ -447,9 +468,8 @@ class game_window(pyglet.window.Window):
         #     Labels.playername_label.input_text = Typein.input_text
         # Control.CurrentPlayer.name = Typein.input_text
 
-    # @staticmethod
     def on_key_press(self, symbol, modifiers):
-        print(symbol)
+        # print(symbol) # use for finding id of button
         if symbol == key.ENTER:
             globals.code = self.input_text.upper()
             self.input_text = ''
@@ -459,7 +479,10 @@ class game_window(pyglet.window.Window):
                         i.image = animations.animations.DUA_ani
                         objects.Drill.image = animations.animations.DUA_ani
         elif symbol == key.SLASH:
-            self.show_overlay = not (self.show_overlay)
+            if modifiers & key.MOD_SHIFT:
+                self.show_grid = not(self.show_grid)
+            else:
+                self.show_overlay = not(self.show_overlay)
             # Control.handleraltered = False
         elif symbol == key.BACKSLASH:
             if self.clicked_object is not None:
@@ -538,7 +561,9 @@ class game_window(pyglet.window.Window):
 
     def on_draw(self):
         self.clear()
-        self.bg_batch.draw()
+        globals.bg_batch.draw()
+        if self.show_grid:
+            globals.grid_batch.draw()
         # globals.tracer_batch.draw() # Tracer batch doesn't seem to work even after setting the tracer's batch to it
         globals.building_batch.draw()
         globals.small_troop_batch.draw()
@@ -566,10 +591,29 @@ class game_window(pyglet.window.Window):
         return self.game_objects
 
     def tiles_map(self, resx=globals.screenresx, resy=globals.screenresy, size=20):
+        grad = pixel_approx.tileize(pixel_approx.get_noise(), size)
+        # grad_final = []
+        # for j in range(len(grad[0])):
+        #     grad_final.append([])
+
+        # for counti, i in enumerate(range(len(grad[0]))):
+        #     for countj, j in enumerate(range(len(grad))):
+        #         grad_final[countj][counti].append(grad[counti][countj])
+        #
+        # print(str(len(grad_final)))
+        # print(str(len(grad_final[0])))
+
         ylayers = resy // size
         print(ylayers)
         print(ylayers)
         tiles = []
+        deep_water = (19, 15, 64)
+        shallow_water = (41, 128, 185)
+        shore = (236, 204, 104)
+        land = (0, 148, 50)
+        raised = (44, 22, 8)
+        hill = (45, 52, 54)
+        mountain = (223, 230, 233)
         for i in range(ylayers):
             tiles.append([])
             globals.astar_map.append([])
@@ -579,49 +623,91 @@ class game_window(pyglet.window.Window):
             # print("layer" + str(i))
             for j in range(resx // size):
                 # r = secrets.randbelow(255)
-                g = secrets.randbelow(128)
-                g2 = secrets.randbelow(64)
-                g3 = g - g2
-                if g3 < 1:
-                    g3 = 20
-                g3 += 25
+                colournum = (grad[j][i])[0]
+                tile_colour = None
+                # NOTE: higher tilemod means higher cost on a* map, and SLOWER movement on tile. -1 is impassable terrain
+                if colournum >= 0 and colournum < 50:
+                    tile_colour = deep_water
+                    tilemod = -1
+                elif colournum >= 50 and colournum < 90:
+                    tile_colour = shallow_water
+                    tilemod = -1
+                elif colournum >= 90 and colournum < 110:
+                    tile_colour = shore
+                    tilemod = 1
+                elif colournum >= 110 and colournum < 147:
+                    tile_colour = land
+                    tilemod = 1
+                elif colournum >= 147 and colournum < 183:
+                    tile_colour = raised
+                    tilemod = 2
+                elif colournum >= 183 and colournum < 210:
+                    tile_colour = hill
+                    tilemod = 3
+                elif colournum >= 210 and colournum <= 255:
+                    tile_colour = mountain
+                    tilemod = 10
+                # g = secrets.randbelow(128)
+                # g2 = secrets.randbelow(64)
+                # g3 = g - g2
+                # if g3 < 1:
+                #     g3 = 20
+                # g3 += 25
                 # b = secrets.randbelow(255)
-                tiles[i - 1].append(
-                    objects.TileBG(x=size * j, y=size * i, width=size, height=size, color=(0, g3, 0),
-                                   batch=tilebatch))
-                globals.astar_map[i - 1].append(1)
-        globals.astar_map.insert(0, [])
+                current_tile = objects.TileBG(x=size * j, y=size * i, width=size, height=size, color=tile_colour,
+                               batch=tilebatch)
+
+                globals.astar_map[ylayers - i - 1].append(tilemod)
+                if tilemod < 0:
+                    current_tile.modifier = 0.0001
+                else:
+                    current_tile.modifier = 1/tilemod
+
+                tiles[i - 1].append(current_tile)
+
+                # globals.astar_map[i - 1].append(1)
+        # globals.astar_map.insert(0, [])
+        # for i in range(resx // size):
+        #     globals.astar_map[0].append(-1)
+
         for i in range(resx // size):
-            globals.astar_map[0].append(-1)
+            objects.grid_set.append((
+                pyglet.shapes.Line(xcoord := i*20, 0, xcoord, resy, 1, (35, 35, 35), batch=globals.grid_batch)
+            ))
 
-        for i in range(len(tiles)):
-            choice = secrets.randbelow(3)
-            if choice == 0:
-                x_choice = secrets.randbelow(16)
-                (tiles[i])[x_choice].color = (0, 0, 255)
-                (tiles[i])[x_choice].make_barrier()
-                (globals.astar_map[i])[x_choice] = -1
+        for i in range(resy // size):
+            objects.grid_set.append((
+                pyglet.shapes.Line(0, ycoord := i*20, resx, ycoord, 1, (35, 35, 35), batch=globals.grid_batch)
+            ))
 
-                val_list = []
-                for i in range(4):
-                    for i in range(10):
-                        val_list.append(secrets.randbelow(2))
-                    if val_list[0] == 1:
-                        (tiles[i])[x_choice - 1].color = (100, 100, 255)
-                        (tiles[i])[x_choice - 1].make_barrier()
-                        (globals.astar_map[i])[x_choice - 1] = -1
-                    elif val_list[1] == 1:
-                        (tiles[i])[x_choice + 1].color = (100, 100, 255)
-                        (tiles[i])[x_choice + 1].make_barrier()
-                        (globals.astar_map[i])[x_choice + 1] = -1
-                    elif val_list[2] == 1:
-                        (tiles[i - 1])[x_choice].color = (100, 100, 255)
-                        (tiles[i - 1])[x_choice].make_barrier()
-                        (globals.astar_map[i - 1])[x_choice] = -1
-                    elif val_list[3] == 1 and i < resy // 2:
-                        (tiles[i + 1])[x_choice].color = (100, 100, 255)
-                        (tiles[i + 1])[x_choice].make_barrier()
-                        (globals.astar_map[i + 1])[x_choice] = -1
+        # for i in range(len(tiles)):
+        #     choice = secrets.randbelow(3)
+        #     if choice == 0:
+        #         x_choice = secrets.randbelow(16)
+        #         (tiles[i])[x_choice].color = (0, 0, 255)
+        #         (tiles[i])[x_choice].make_barrier()
+        #         (globals.astar_map[i])[x_choice] = -1
+        #
+        #         val_list = []
+        #         for i in range(4):
+        #             for i in range(10):
+        #                 val_list.append(secrets.randbelow(2))
+        #             if val_list[0] == 1:
+        #                 (tiles[i])[x_choice - 1].color = (100, 100, 255)
+        #                 (tiles[i])[x_choice - 1].make_barrier()
+        #                 (globals.astar_map[i])[x_choice - 1] = -1
+        #             elif val_list[1] == 1:
+        #                 (tiles[i])[x_choice + 1].color = (100, 100, 255)
+        #                 (tiles[i])[x_choice + 1].make_barrier()
+        #                 (globals.astar_map[i])[x_choice + 1] = -1
+        #             elif val_list[2] == 1:
+        #                 (tiles[i - 1])[x_choice].color = (100, 100, 255)
+        #                 (tiles[i - 1])[x_choice].make_barrier()
+        #                 (globals.astar_map[i - 1])[x_choice] = -1
+        #             elif val_list[3] == 1 and i < resy // 2:
+        #                 (tiles[i + 1])[x_choice].color = (100, 100, 255)
+        #                 (tiles[i + 1])[x_choice].make_barrier()
+        #                 (globals.astar_map[i + 1])[x_choice] = -1
         globals.astar_matrix = Grid(matrix=globals.astar_map)
 
         return tiles, tilebatch

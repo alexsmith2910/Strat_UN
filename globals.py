@@ -1,8 +1,8 @@
 import pyglet
 from pathfinding.core.diagonal_movement import DiagonalMovement
 from pathfinding.core.grid import Grid
-#from pathfinding.finder.a_star import AStarFinder
 from pathfinding.finder.bi_a_star import BiAStarFinder
+
 finder = BiAStarFinder(diagonal_movement=DiagonalMovement.always)
 
 #use to comtrol offline multiplayer
@@ -11,6 +11,11 @@ offline_multi = False
 # NOTE: currently being used since my keyboard seems to treak the numpad as OEM.
 # set this to True if your numpad does nothing in 2 player mode (i.e not selecting the different buildings for P2)
 distribution = False
+
+p1_color = (150, 200, 255)
+p2_color = (255, 100, 100)
+p3_color = (160, 255, 100)
+p4_color = (255, 255, 100)
 
 astar_map = []
 astar_matrix = None
@@ -36,6 +41,9 @@ player1_x = 0
 player1_y = 0
 screenresx = 1500
 screenresy = 1000
+squares = []
+bg_batch = pyglet.graphics.Batch()
+grid_batch = pyglet.graphics.Batch()
 overlay_batch = pyglet.graphics.Batch()
 bar_batch = pyglet.graphics.Batch()
 building_batch = pyglet.graphics.Batch()
@@ -48,3 +56,11 @@ barracks_selection = 0
 code = ""
 clickable = None
 key_handler = pyglet.window.key.KeyStateHandler()
+
+
+def get_centred_coords(self, x, y):
+    x_remainder = x % 20
+    y_remainder = y % 20
+    x_centred = (x - x_remainder) + 10
+    y_centred = (y - y_remainder) + 10
+    return x_centred, y_centred
