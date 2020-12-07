@@ -1,12 +1,7 @@
-import random
-import inspect
 import secrets
-import pyglet
-from pyglet.gl import *
-from pyglet.window import key, mouse
+from pyglet.window import key
 from pyglet.graphics import *
 import objects
-import animations
 import globals
 from pathfinding.core.diagonal_movement import DiagonalMovement
 from pathfinding.core.grid import Grid
@@ -14,36 +9,39 @@ from pathfinding.finder.bi_a_star import BiAStarFinder
 
 finder = BiAStarFinder(diagonal_movement=DiagonalMovement.always)
 
-from map.prep import pixel_approx
+from src.map.prep import pixel_approx
+import src
 
-pyglet.font.add_file("BebasNeue-Regular.otf")
+pyglet.font.add_file("src/BebasNeue-Regular.otf")
 
 class game_window(pyglet.window.Window):
     def __init__(self):
         super().__init__()  # self, game_window
         self.set_vsync(False)
-        self.player_image = pyglet.image.load("sprite/P1-sprite.png")
+        # self.set_fullscreen(True)
+        self.player_image = pyglet.image.load("src/sprite/P1-sprite.png")
         self.player_image.anchor_x = 10
         self.player_image.anchor_y = 10
         self.set_minimum_size(globals.screenresx, globals.screenresy)
         self.set_size(globals.screenresx, globals.screenresy)
+        globals.squares, globals.bg_batch = self.tiles_map()
         self.player_one = objects.Player(x=550, y=550)
-        self.player_one.set_id("Zestyy", 1)
+        self.player_one.set_id(globals.p1_name, 1)
         self.game_objects = [self.player_one]
         if globals.offline_multi:
             self.player_two = objects.Player(x=650, y=650)
-            self.player_two.set_id("Guest", 2)
+            self.player_two.set_id(globals.p2_name, 2)
             self.game_objects.append(self.player_two)
         globals.troop_objects.append(objects.Dev_Tank(x=410, y=490))
-        globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Zestyy", 1))
+        globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p1_name, 1))
         globals.troop_objects.append(objects.Dev_Tank(x=710, y=710))
-        globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("Guest", 2))
+        globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p2_name, 2))
         # globals.troop_objects.append(objects.Dev_Tank(x=1010, y=810))
-        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("P3", 3))
+        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p3_name, 3))
         # globals.troop_objects.append(objects.Dev_Tank(x=110, y=510))
-        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner(("P4", 4))
+        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p4_name, 4))
+        self.HQ_spawn()
         self.push_handlers(globals.key_handler)
-        globals.squares, globals.bg_batch = self.tiles_map()
         pyglet.clock.schedule_interval(self.update, 1 / 120.0)
         self.fps_display = pyglet.window.FPSDisplay(self)
         self.input_text = ''
@@ -55,6 +53,27 @@ class game_window(pyglet.window.Window):
         self.show_grid = True
         self.show_overlay = False
         self.clicked_object = None
+
+    def HQ_spawn(self, players=2, distance=120):
+        cur_player = 0
+        for i in range(players):
+            tile_copy = []
+            cur_player += 1
+            for i in globals.squares:
+                for j in i:
+                    if not j.get_barrier_state():
+                        if cur_player == 1:
+                            if j.x <= distance:
+                                tile_copy.append(j)
+                        elif cur_player == 2:
+                            if j.x >= globals.screenresx - distance:
+                                tile_copy.append(j)
+            chosen = secrets.choice(tile_copy)
+            globals.building_objects.append(objects.HQ(x=chosen.get_x()+10, y=chosen.get_y()+10))
+            if cur_player == 1:
+                globals.building_objects[len(globals.building_objects) - 1].set_owner((globals.p1_name, 1))
+            elif cur_player == 2:
+                globals.building_objects[len(globals.building_objects) - 1].set_owner((globals.p2_name, 2))
 
     def gen_overlay(self, xres=globals.screenresx, yres=globals.screenresy):
         #TODO: make overlay compatible with 2 player play, either if else 2 generations or let the original be generated then move
@@ -476,8 +495,8 @@ class game_window(pyglet.window.Window):
             if globals.code == "MEMENTOMORI":
                 for i in globals.building_objects:
                     if i.get_obj_type() == "Drill":
-                        i.image = animations.animations.DUA_ani
-                        objects.Drill.image = animations.animations.DUA_ani
+                        i.image = src.animations.animation.DUA_ani
+                        objects.Drill.image = src.animations.animation.DUA_ani
         elif symbol == key.SLASH:
             if modifiers & key.MOD_SHIFT:
                 self.show_grid = not(self.show_grid)
@@ -604,8 +623,7 @@ class game_window(pyglet.window.Window):
         # print(str(len(grad_final[0])))
 
         ylayers = resy // size
-        print(ylayers)
-        print(ylayers)
+        # print(ylayers)
         tiles = []
         deep_water = (19, 15, 64)
         shallow_water = (41, 128, 185)
@@ -635,13 +653,13 @@ class game_window(pyglet.window.Window):
                 elif colournum >= 90 and colournum < 110:
                     tile_colour = shore
                     tilemod = 1
-                elif colournum >= 110 and colournum < 147:
+                elif colournum >= 110 and colournum < 150:
                     tile_colour = land
                     tilemod = 1
-                elif colournum >= 147 and colournum < 183:
+                elif colournum >= 150 and colournum < 175:
                     tile_colour = raised
                     tilemod = 2
-                elif colournum >= 183 and colournum < 210:
+                elif colournum >= 175 and colournum < 210:
                     tile_colour = hill
                     tilemod = 3
                 elif colournum >= 210 and colournum <= 255:
@@ -660,6 +678,7 @@ class game_window(pyglet.window.Window):
                 globals.astar_map[ylayers - i - 1].append(tilemod)
                 if tilemod < 0:
                     current_tile.modifier = 0.0001
+                    current_tile.make_barrier()
                 else:
                     current_tile.modifier = 1/tilemod
 

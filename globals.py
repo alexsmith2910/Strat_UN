@@ -17,6 +17,11 @@ p2_color = (255, 100, 100)
 p3_color = (160, 255, 100)
 p4_color = (255, 255, 100)
 
+p1_name = "Zestyy"
+p2_name = "Elite"
+p3_name = "AJS"
+p4_name = "P4"
+
 astar_map = []
 astar_matrix = None
 game_objects = []

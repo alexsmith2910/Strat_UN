@@ -1,57 +1,62 @@
 import os
 import math
 import pyglet
-from pyglet.window import key, mouse
+from pyglet.window import key
 import secrets  # Used for better randomness
 import random  # Used to save time complexity for common actions
 import globals
-import animations.animations
+
+from src.animations.animation import drill_frames
 
 random.seed(a=os.urandom(1024))  # Used to drastically reduce predictability and therefore chance of abusing of the RNG
 
 grid_set = []
 
-building_placeholder_image = pyglet.image.load("sprite/Building-placeholder.png")
+building_placeholder_image = pyglet.image.load("src/sprite/Building-placeholder.png")
 building_placeholder_image.anchor_x = 10
 building_placeholder_image.anchor_y = 10
 
-troop_placeholder_image = pyglet.image.load("sprite/Troop-placeholder.png")
+troop_placeholder_image = pyglet.image.load("src/sprite/Troop-placeholder.png")
 troop_placeholder_image.anchor_x = 10
 troop_placeholder_image.anchor_y = 10
 
-player_image = pyglet.image.load("sprite/P1-sprite.png")
+player_image = pyglet.image.load("src/sprite/P1-sprite.png")
 player_image.anchor_x = 10
 player_image.anchor_y = 10
 
-player_2_image = pyglet.image.load("sprite/P2-sprite.png")
+player_2_image = pyglet.image.load("src/sprite/P2-sprite.png")
 player_2_image.anchor_x = 10
 player_2_image.anchor_y = 10
 
-drill_image = pyglet.image.load("sprite/Drill-sprite.png")
+HQ_image = pyglet.image.load("src/sprite/HQ-sprite.png")
+HQ_image.anchor_x = 10
+HQ_image.anchor_y = 10
+
+drill_image = pyglet.image.load("src/sprite/Drill-sprite.png")
 drill_image.anchor_x = 10
 drill_image.anchor_y = 10
 
-refinery_image = pyglet.image.load("sprite/Refinery-sprite.png")
+refinery_image = pyglet.image.load("src/sprite/Refinery-sprite.png")
 refinery_image.anchor_x = 10
 refinery_image.anchor_y = 10
 
-turret_image = pyglet.image.load("sprite/Basic-turret-sprite.png")
+turret_image = pyglet.image.load("src/sprite/Basic-turret-sprite.png")
 turret_image.anchor_x = 10
 turret_image.anchor_y = 10
 
-barracks_image = pyglet.image.load("sprite/Barracks-20px.png")
+barracks_image = pyglet.image.load("src/sprite/Barracks-20px.png")
 barracks_image.anchor_x = 10
 barracks_image.anchor_y = 10
 
-dev_tank_image = pyglet.image.load("sprite/Dev-tank-sprite-60.png")
+dev_tank_image = pyglet.image.load("src/sprite/Dev-tank-sprite-60.png")
 dev_tank_image.anchor_x = 15
 dev_tank_image.anchor_y = 30
 
-infantry_image = pyglet.image.load("sprite/Basic-infantry-sprite.png")
+infantry_image = pyglet.image.load("src/sprite/Basic-infantry-sprite.png")
 infantry_image.anchor_x = 10
 infantry_image.anchor_y = 10
 
-sniper_image = pyglet.image.load("sprite/Sniper-Sprite.png")
+sniper_image = pyglet.image.load("src/sprite/Sniper-Sprite.png")
 sniper_image.anchor_x = 10
 sniper_image.anchor_y = 10
 
@@ -64,7 +69,7 @@ sniper_image.anchor_y = 10
 #         drill_frames.append(pyglet.resource.image(filepath))
 # print(drill_frames)
 
-drill_ani = pyglet.image.Animation.from_image_sequence(animations.animations.drill_frames, duration=0.017, loop=True)
+drill_ani = pyglet.image.Animation.from_image_sequence(drill_frames, duration=0.017, loop=True)
 
 
 
@@ -835,12 +840,13 @@ class HQ(Building):
     overlay_name = "HQ"
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)#img=drill_image,
-        self.image = drill_image
+        self.image = HQ_image
         self.color = (0, 0, 0)
         self.name = "HQ"
         self.overlay_name = "HQ"
         self.building_type = "Static"
-        self.max_health = 100000
+        self.max_health = 50000
+        self.armour = 85
         self.health = self.max_health
         #self.mine_rate = secrets.choice([2.5, 2.75, 3, 3.25, 3.5])
         #self.built = False
