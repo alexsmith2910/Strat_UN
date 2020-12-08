@@ -1,4 +1,5 @@
 import secrets
+import ctypes
 from pyglet.window import key
 from pyglet.graphics import *
 import objects
@@ -12,12 +13,18 @@ finder = BiAStarFinder(diagonal_movement=DiagonalMovement.always)
 from src.map.prep import pixel_approx
 import src
 
+myappid = u'Zestyy.Strat_UN.Main.V0.2BETA' # these lines are used to seperate the app from the python 'umbrella'
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
+win_icon = pyglet.resource.image("src/icon/Strat_un-icon-N.png")
+
 pyglet.font.add_file("src/BebasNeue-Regular.otf")
 
 class game_window(pyglet.window.Window):
     def __init__(self):
         super().__init__()  # self, game_window
         self.set_vsync(False)
+        self.set_icon(win_icon)
         # self.set_fullscreen(True)
         self.player_image = pyglet.image.load("src/sprite/P1-sprite.png")
         self.player_image.anchor_x = 10
