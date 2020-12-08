@@ -11,7 +11,7 @@
 <br />
 <p align="center">
   <a href="https://github.com/alexsmith2910/Strat_UN">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
+    <img src="src/icon/Strat_un-icon.png" alt="Logo" width="80" height="80">
   </a>
 
   <h3 align="center">STRAT_UN</h3>
