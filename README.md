@@ -1,18 +1,23 @@
 [![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![MIT License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
-
 
 
 <!-- PROJECT LOGO -->
 <br />
 <p align="center">
-  <a href="https://github.com/alexsmith2910/Strat_UN">
-    <img src="src/icon/Strat_un-icon-N.png" alt="Logo" width="80" height="80">
-  </a>
+  <p align="center">
+    <a href="https://github.com/alexsmith2910">
+      <img src="src/icon/Strat_un-icon-N.png" alt="Logo" width="80" height="80">
+    </a>
+    <a href="https://github.com/alexsmith2910/Strat_UN">
+      <img src="src/icon/Strat_un-icon-N.png" alt="Logo" width="80" height="80">
+    </a>
+    <a href="https://github.com/SSteers126">
+      <img src="src/icon/Strat_un-icon-N.png" alt="Logo" width="80" height="80">
+    </a>
+  </p>
 
   <h3 align="center">STRAT_UN</h3>
 
@@ -182,16 +187,16 @@ Project Link: [https://github.com/your_username/repo_name](https://github.com/yo
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/othneildrew/Best-README-Template.svg?style=for-the-badge
-[contributors-url]: https://github.com/othneildrew/Best-README-Template/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/othneildrew/Best-README-Template.svg?style=for-the-badge
-[forks-url]: https://github.com/othneildrew/Best-README-Template/network/members
-[stars-shield]: https://img.shields.io/github/stars/othneildrew/Best-README-Template.svg?style=for-the-badge
-[stars-url]: https://github.com/othneildrew/Best-README-Template/stargazers
-[issues-shield]: https://img.shields.io/github/issues/othneildrew/Best-README-Template.svg?style=for-the-badge
-[issues-url]: https://github.com/othneildrew/Best-README-Template/issues
-[license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
-[license-url]: https://github.com/othneildrew/Best-README-Template/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/alexsmith2910/Strat_UN.svg?style=for-the-badge
+[contributors-url]: https://github.com/alexsmith2910/Strat_UN/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/alexsmith2910/Strat_UN.svg?style=for-the-badge
+[forks-url]: https://github.com/alexsmith2910/Strat_UN/network/members
+[stars-shield]: https://img.shields.io/github/stars/alexsmith2910/Strat_UN.svg?style=for-the-badge
+[stars-url]: https://github.com/alexsmith2910/Strat_UN/Template/stargazers
+[issues-shield]: https://img.shields.io/github/issues/alexsmith2910/Strat_UN.svg?style=for-the-badge
+[issues-url]: https://github.com/alexsmith2910/Strat_UN/issues
+[license-shield]: https://img.shields.io/github/license/alexsmith2910/Strat_UN.svg?style=for-the-badge
+[license-url]: https://github.com/alexsmith2910/Strat_UN/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/othneildrew
 [product-screenshot]: images/screenshot.png
