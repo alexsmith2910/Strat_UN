@@ -22,6 +22,11 @@ p2_name = "Elite"
 p3_name = "AJS"
 p4_name = "P4"
 
+p1_HQL = True # HQ Life - flag for if the player's HQ is still in play
+p2_HQL = True
+p3_HQL = True
+p4_HQL = True
+
 astar_map = []
 astar_matrix = None
 game_objects = []
@@ -46,11 +51,11 @@ player1_x = 0
 player1_y = 0
 screenresx = 1500
 screenresy = 1000
-squares = []
+bg_tiles = []
 bg_batch = pyglet.graphics.Batch()
 grid_batch = pyglet.graphics.Batch()
 overlay_batch = pyglet.graphics.Batch()
-bar_batch = pyglet.graphics.Batch()
+hud_batch = pyglet.graphics.Batch()
 building_batch = pyglet.graphics.Batch()
 small_troop_batch = pyglet.graphics.Batch()
 medium_troop_batch = pyglet.graphics.Batch()

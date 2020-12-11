@@ -31,7 +31,7 @@ class game_window(pyglet.window.Window):
         self.player_image.anchor_y = 10
         self.set_minimum_size(globals.screenresx, globals.screenresy)
         self.set_size(globals.screenresx, globals.screenresy)
-        globals.squares, globals.bg_batch = self.tiles_map()
+        globals.bg_tiles, globals.bg_batch = self.tiles_map()
         self.player_one = objects.Player(x=550, y=550)
         self.player_one.set_id(globals.p1_name, 1)
         self.game_objects = [self.player_one]
@@ -39,15 +39,17 @@ class game_window(pyglet.window.Window):
             self.player_two = objects.Player(x=650, y=650)
             self.player_two.set_id(globals.p2_name, 2)
             self.game_objects.append(self.player_two)
-        globals.troop_objects.append(objects.Dev_Tank(x=410, y=490))
+        # globals.troop_objects.append(objects.Dev_Tank(x=globals.building_objects[0].get_x()+100, y=globals.building_objects[0].get_y()+100))
+        globals.troop_objects.append(objects.Dev_Tank(x=610, y=610))
         globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p1_name, 1))
-        globals.troop_objects.append(objects.Dev_Tank(x=710, y=710))
+        globals.troop_objects.append(objects.Dev_Tank(x=710, y=410))
         globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p2_name, 2))
         # globals.troop_objects.append(objects.Dev_Tank(x=1010, y=810))
         # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p3_name, 3))
         # globals.troop_objects.append(objects.Dev_Tank(x=110, y=510))
         # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p4_name, 4))
         self.HQ_spawn()
+        # globals.troop_objects[len(globals.troop_objects) - 1].health = 10
         self.push_handlers(globals.key_handler)
         pyglet.clock.schedule_interval(self.update, 1 / 120.0)
         self.fps_display = pyglet.window.FPSDisplay(self)
@@ -66,7 +68,7 @@ class game_window(pyglet.window.Window):
         for i in range(players):
             tile_copy = []
             cur_player += 1
-            for i in globals.squares:
+            for i in globals.bg_tiles:
                 for j in i:
                     if not j.get_barrier_state():
                         if cur_player == 1:
@@ -336,6 +338,9 @@ class game_window(pyglet.window.Window):
             i.update(dt)
         for i in globals.troop_objects:
             i.update(dt)
+        for i in globals.bg_tiles:
+            for j in i:
+                j.update(dt)
 
         if self.clicked_object is not None:
             globals.clickable = self.clicked_object
@@ -590,7 +595,6 @@ class game_window(pyglet.window.Window):
         globals.bg_batch.draw()
         if self.show_grid:
             globals.grid_batch.draw()
-        # globals.tracer_batch.draw() # Tracer batch doesn't seem to work even after setting the tracer's batch to it
         globals.building_batch.draw()
         globals.small_troop_batch.draw()
         globals.medium_troop_batch.draw()
@@ -598,10 +602,11 @@ class game_window(pyglet.window.Window):
         for i in globals.building_objects:
             if i.get_obj_type() == "Tracing turret":
                 i.get_tracer().draw()
-        for i in globals.troop_objects:
-            if i.get_weapon_tracing():
-                i.get_tracer().draw()
-        globals.bar_batch.draw()
+        # for i in globals.troop_objects:
+        #     if i.get_weapon_tracing():
+        #         i.get_tracer().draw()
+        globals.tracer_batch.draw()  # Tracer batch doesn't seem to work even after setting the tracer's batch to it
+        globals.hud_batch.draw()
         #     i.draw()
         # for i in globals.troop_objects:
         #     i.draw()
@@ -618,16 +623,7 @@ class game_window(pyglet.window.Window):
 
     def tiles_map(self, resx=globals.screenresx, resy=globals.screenresy, size=20):
         grad = pixel_approx.tileize(pixel_approx.get_noise(), size)
-        # grad_final = []
-        # for j in range(len(grad[0])):
-        #     grad_final.append([])
 
-        # for counti, i in enumerate(range(len(grad[0]))):
-        #     for countj, j in enumerate(range(len(grad))):
-        #         grad_final[countj][counti].append(grad[counti][countj])
-        #
-        # print(str(len(grad_final)))
-        # print(str(len(grad_final[0])))
 
         ylayers = resy // size
         # print(ylayers)

@@ -71,6 +71,34 @@ sniper_image.anchor_y = 10
 
 drill_ani = pyglet.image.Animation.from_image_sequence(drill_frames, duration=0.017, loop=True)
 
+class TileError(Exception):
+    """Attributes:
+        args[0] = Error Message
+        args[1] = Issue
+    """
+
+    def __init__(self, *args):
+        if args:
+            self.message = args[0]
+            self.issue = args[1]
+        else:
+            self.message = None
+            self.issue = None
+
+        if self.issue == 0:
+            self.issue = "Incorrect data type"
+        elif self.issue == 1:
+            self.issue = "Extra issue"
+        else:
+            self.issue = "Commit to unknown operation"
+
+    def __str__(self):
+        if self.message:
+            return "TileError, Failed to {0}, message: {1}".format(self.issue, self.message)
+            # raise
+        else:
+            return "TileError, has been raised."
+            # raise
 
 
 class NameError(Exception):
@@ -166,12 +194,27 @@ class TileBG(pyglet.shapes.Rectangle):
         self.modifier = 1
         self.owner = ""
         self.barrier = False
+        self.occupied = False
+
+    def get_centre(self):
+        return (self.x+10, self.y+10)
 
     def make_barrier(self):
         self.barrier = True
 
     def remove_barrier(self):
         self.barrier = False
+
+    def set_occupied(self, boolean=False):
+        if type(boolean) != bool:
+            raise TileError("Tile has been given a non-bool value for occupation", 0)
+        else:
+            self.occupied = boolean
+
+    def update(self, *args, **kwargs):
+        # if self.occupied:
+        #     [print("occupied")]
+        pass
 
     def set_modifier(self, new_mod):
         self.modifier = new_mod
@@ -218,6 +261,10 @@ class Building(TileObject):
         self.dot = False
         self.dot_strength = None
         self.fire_rate = 1.0
+        self.s_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 20), 20, 2, (0, 0, 255), batch=globals.hud_batch)
+        self.h_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 22), 20, 2, (0, 255, 0), batch=globals.hud_batch)
+        self.s_bar.opacity = 0
+        self.h_bar.opacity = 0
 
         self.dot_damage = 0
 
@@ -257,6 +304,24 @@ class Building(TileObject):
             print(globals.building_objects)
             # self.x = -100000000
             # self.y = -100000000
+
+    def bars(self):
+        if self.health == self.max_health and self.shield == self.max_shield:
+            self.h_bar.opacity = 0
+            self.s_bar.opacity = 0
+        else:
+            self.h_bar.opacity = 255
+            self.s_bar.opacity = 255
+
+            self.h_bar.width = round((self.health / self.max_health) * 20)
+            self.h_bar.x = (self.x - 10)
+            self.h_bar.y = (self.y + 22)
+            if self.max_shield > 0:
+                self.s_bar.width = round((self.shield / self.max_shield) * 20)
+                self.s_bar.x = (self.x - 10)
+                self.s_bar.y = (self.y + 20)
+            else:
+                self.s_bar.width = 0
 
     def get_owner(self):
         return self.owner_num
@@ -321,11 +386,11 @@ class Troop(TileObject):
         # Defence characteristics
         self.max_health = 250
         self.health = self.max_health
-        self.h_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 22), 20, 2, (0, 255, 0), batch=globals.bar_batch)
+        self.h_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 22), 20, 2, (0, 255, 0), batch=globals.hud_batch)
         self.armour = 0
         self.max_shield = 0
         self.shield = self.max_shield
-        self.s_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 20), 20, 2, (0, 0, 255), batch=globals.bar_batch)
+        self.s_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 20), 20, 2, (0, 0, 255), batch=globals.hud_batch)
         self.regen = 0
         # Movement and pathfinding characteristics
         self.accel = 0.2
@@ -356,7 +421,7 @@ class Troop(TileObject):
         self.targety = None
         self.tracer_colour = (255, 255, 255)
         self.tracer_width = 2
-        self.tracer = pyglet.shapes.Line(0, 0, 0, 0, 0, color=self.tracer_colour)
+        self.tracer = pyglet.shapes.Line(self.x, self.y, self.x, self.y, 2, color=self.tracer_colour, batch=globals.tracer_batch)
         self.trace_opacity = 255
         self.has_tracer = False
         self.immobilizer = False
@@ -421,7 +486,25 @@ class Troop(TileObject):
         # print(globals.astar_matrix.grid_str(path=path, start=start, end=end)) # D
         if self.cpath != []:
             self.ctarget = self.cpath[0]
+            for i in globals.bg_tiles:
+                for j in i:
+                    if j.x + 10 == self.x and j.y + 10 == self.y:
+                        # print("matched remove: " + str(j.x - 10) + ", " + str(j.y + 10))
+                        j.set_occupied(False)
+                        break
         globals.astar_matrix.cleanup()
+        last_coord = self.cpath[len(self.cpath)-1]
+        print(last_coord)
+        for i in globals.bg_tiles:  # TODO: (low priority) improve efficiency of algorithm
+            for j in i:             # TODO: (find tile directly through coords?)
+                if j.x+10 == last_coord[0] and j.y+10 == last_coord[1]:
+                    # print("matched: " + str(j.x-10) + ", " + str(j.y+10))
+                    j.set_occupied(True)
+                    break
+        # cpath_length = len(self.cpath) - 1
+        # print((self.cpath[cpath_length][1])//20)
+        # print((self.cpath[cpath_length][0])//20)
+        # globals.bg_tiles[[((self.cpath[cpath_length][1])//20)][((self.cpath[cpath_length][0])//20)]].set_occupied(True)
 
     def auto_target(self):
         found = False
@@ -523,7 +606,7 @@ class Troop(TileObject):
     def move(self, dt):
         cur_tile = self.get_centred_coords(self.x, self.y)
         if (self.last_tile != cur_tile or self.last_tile is None):
-            for i in globals.squares:
+            for i in globals.bg_tiles:
                 for j in i:
                     if self.get_centred_coords(j.get_x(), j.get_y()) == cur_tile:
                         self.current_tile = j
@@ -689,10 +772,16 @@ class Troop(TileObject):
         if self.targeting:
             if self.trace_opacity < 1 and self.ctarget == None:
                 self.trace_opacity = 255
+                self.tracer.x = self.x # For some reason x1 and y1 doesn't work here
+                self.tracer.y = self.y
+                self.tracer.x2 = self.targetx
+                self.tracer.y2 = self.targety
                 self.targeted.hit(self.damage)
                 if self.targeted is not None:
                     self.fire()
-                    self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 2, color=self.tracer_colour)
+                    self.tracer.x2 = self.targetx
+                    self.tracer.y2 = self.targety
+                    # self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 2, color=self.tracer_colour)
             if self.ctarget == None:
                 xdiff = self.targetx - self.x
                 ydiff = self.y - self.targety
@@ -712,10 +801,10 @@ class Troop(TileObject):
                 elif (self.targetx > self.x and self.targety > self.y) or (self.targetx > self.x and self.targety < self.y):
                     self.rotation = 90 + math.degrees(rawangle)
 
-                if self.first_burst:
-                    self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, self.tracer_width, color=self.tracer_colour)
-                    self.first_burst = False
-                self.tracer.opacity = self.trace_opacity
+                # if self.first_burst:
+                #     self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, self.tracer_width, color=self.tracer_colour)
+                #     self.first_burst = False
+                # self.tracer.opacity = self.trace_opacity
 
                 if self.auto_targeting and self.targeting and self.speed != 0:
                     self.speed = 0
@@ -846,14 +935,68 @@ class HQ(Building):
         self.overlay_name = "HQ"
         self.building_type = "Static"
         self.max_health = 50000
-        self.armour = 85
         self.health = self.max_health
+        self.armour = 85
+        self.max_shield = 500
+        self.shield = self.max_shield
+        self.regen = 10
+        #Unique variables
+        self.repairing = 10
+        self.repair_range = 100
+        self.repair_lines = [
+            pyglet.shapes.Line(self.x, self.y, self.x, self.y, 2, (0, 255, 0), batch=globals.tracer_batch),
+            pyglet.shapes.Line(self.x, self.y, self.x, self.y, 2, (0, 255, 0), batch=globals.tracer_batch),
+            pyglet.shapes.Line(self.x, self.y, self.x, self.y, 2, (0, 255, 0), batch=globals.tracer_batch),
+            pyglet.shapes.Line(self.x, self.y, self.x, self.y, 2, (0, 255, 0), batch=globals.tracer_batch),
+            pyglet.shapes.Line(self.x, self.y, self.x, self.y, 2, (0, 255, 0), batch=globals.tracer_batch)
+        ]
         #self.mine_rate = secrets.choice([2.5, 2.75, 3, 3.25, 3.5])
         #self.built = False
         #self.activation_timer = 10.0
 
     def update(self, dt):
-        pass
+        self.repair(dt)
+
+    def repair(self, dt):
+        # self.repair_lines = []
+        rep_count = 0
+        for i in globals.troop_objects:
+            if i.get_owner() == self.owner_num and \
+                    math.sqrt(((self.x - i.get_x()) ** 2) + ((self.y - i.get_y()) ** 2)) <= self.repair_range \
+                    and i.health < i.max_health and rep_count < 4:
+                i.health += 0.01 * i.max_health * dt
+                self.repair_lines[rep_count].x2 = i.get_x()
+                self.repair_lines[rep_count].y2 = i.get_y()
+                if i.health > i.max_health:
+                    i.health = i.max_health
+                    self.repair_lines[rep_count].x1 = self.x
+                    self.repair_lines[rep_count].y1 = self.y
+                    self.repair_lines[rep_count].x2 = self.x
+                    self.repair_lines[rep_count].y2 = self.y
+                rep_count += 1
+        for count, i in enumerate(self.repair_lines):
+            if count >= rep_count:
+                self.repair_lines[rep_count].x1 = self.x
+                self.repair_lines[rep_count].y1 = self.y
+                self.repair_lines[rep_count].x2 = self.x
+                self.repair_lines[rep_count].y2 = self.y
+
+        if self.shield < self.max_shield:
+            self.shield += self.regen * dt
+            if self.shield > self.max_shield:
+                self.shield = self.max_shield
+
+    def death_check(self):
+        if self.health <= 0:
+            if self.get_owner() == 1:
+                globals.p1_HQL = False
+            elif self.get_owner() == 2:
+                globals.p2_HQL = False
+            elif self.get_owner() == 3:
+                globals.p3_HQL = False
+            elif self.get_owner() == 4:
+                globals.p4_HQL = False
+            del globals.building_objects[globals.building_objects.index(self)]
 
 # Industry buildings
 class Drill(Building): # TODO: complete and ensure all objects work correctly with player 2, incorrect colouring for P2 confirmed.
@@ -981,7 +1124,7 @@ class Oil_Rig(Building):
                 globals.player2_lv3_gen -= self.prev_process_rate
                 globals.player2_lv3_gen += self.process_rate
 
-# Workshop
+# Utilities
 
 class Workshop(Building):
     overlay_name = "Workshop"
@@ -995,7 +1138,36 @@ class Workshop(Building):
         self.built = False
         self.activation_timer = 10.0
 
+class Training_station(Building):
+    overlay_name = "Training station"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)  # img=drill_image,
+        self.image = refinery_image
+        self.color = (0, 0, 0)
+        self.name = "Training station"
+        self.building_type = "Industry"
+        self.process_rate = 0.75
+        self.built = False
+        self.activation_timer = 10.0
+
+    def bars(self):
+        if self.health == self.max_health and self.shield == self.max_shield:
+            self.h_bar.opacity = 0
+            self.s_bar.opacity = 0
+        else:
+            self.h_bar.opacity = 255
+            self.s_bar.opacity = 255
+
+            self.h_bar.width = round((self.health / self.max_health) * 20)
+            self.h_bar.x = (self.x - 10)
+            self.h_bar.y = (self.y + 22)
+            if self.max_shield > 0:
+                self.s_bar.width = round((self.shield / self.max_shield) * 20)
+                self.s_bar.x = (self.x - 10)
+                self.s_bar.y = (self.y + 20)
+            else:
+                self.s_bar.width = 0
 
 # Defense buildings
 class Basic_Turret(Building):
@@ -1120,6 +1292,8 @@ class Barracks(Building):
         self.train_flag = False
         self.train_time = 0
         self.train_lim = -1
+        self.train_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 19), 20, 1, (255, 168, 1), batch=globals.hud_batch)
+        self.train_bar.opacity = 0
 
     def train(self):
         if self.train_flag and self.train_time >= 0:
@@ -1159,10 +1333,13 @@ class Barracks(Building):
         self.queue_selected()
         self.train_time += 0.000001
 
+
     def update(self, dt):
         if self.train_time > 0:
             self.train_lim = self.queue[0].training_time
             self.train_time += dt
+            self.train_bar.opacity = 255
+            self.train_bar.width = round((self.train_time / self.train_lim) * 20)
             # print(str(self.train_time - self.train_lim))
         if self.train_time >= self.train_lim and self.queue != []:
             globals.troop_objects.append((self.queue[0])(x=self.x, y=self.y))
@@ -1181,6 +1358,7 @@ class Barracks(Building):
                 self.train_time = 0.000001
             else:
                 self.train_time = 0
+                self.train_bar.opacity = 0
             # print("trained")
 #Troops
 
@@ -1198,7 +1376,7 @@ class Dev_Tank(Troop):
         self.targetx = 500
         self.targety = 500
         self.tracer_colour = (129, 236, 236)
-        self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 0, color=(129, 236, 236))
+        self.tracer = pyglet.shapes.Line(self.x, self.y, self.x, self.y, 2, color=(129, 236, 236), batch = globals.tracer_batch)
         self.trace_opacity = 255
         self.has_tracer = True
         self.damage = 100
@@ -1289,7 +1467,7 @@ class Sniper(Troop):
         self.targety = 500
         self.tracer_colour = (129, 236, 236)
         self.tracer_width = 1
-        self.tracer = pyglet.shapes.Line(self.x, self.y, self.targetx, self.targety, 0, color=(129, 236, 236))
+        self.tracer = pyglet.shapes.Line(self.x, self.y, self.x, self.y, 2, color=(129, 236, 236), batch=globals.tracer_batch)
         self.trace_opacity = 255
         self.has_tracer = True
         self.damage = 450

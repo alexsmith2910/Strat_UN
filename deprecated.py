@@ -202,3 +202,14 @@
 # for i in globals.troop_objects:
 #     i.auto_targeting = not i.auto_targeting
 # print("auto targeting toggled.")
+
+# grad_final = []
+# for j in range(len(grad[0])):
+#     grad_final.append([])
+
+# for counti, i in enumerate(range(len(grad[0]))):
+#     for countj, j in enumerate(range(len(grad))):
+#         grad_final[countj][counti].append(grad[counti][countj])
+#
+# print(str(len(grad_final)))
+# print(str(len(grad_final[0])))
