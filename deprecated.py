@@ -1,3 +1,55 @@
+# class data_window(pyglet.window.Window):
+#     def __init__(self):
+#         super().__init__()  # self, game_window
+#
+#         self.set_vsync(False)
+#         self.mineral_text = "mineral count here"
+#         self.mineral_label = pyglet.text.Label(self.mineral_text,
+#                                                font_name='Bebas Neue',
+#                                                font_size=36,
+#                                                x=self._width // 2, y=(self._height // 2) + 40,
+#                                                anchor_x='center', anchor_y='center')
+#
+#         self.metal_text = "metal count here"
+#         self.metal_label = pyglet.text.Label(self.mineral_text,
+#                                              font_name='Bebas Neue',
+#                                              font_size=36,
+#                                              x=self._width // 2, y=self._height // 2,
+#                                              anchor_x='center', anchor_y='center')
+#
+#         self.selection_text = "selection of building here"
+#         self.selection_label = pyglet.text.Label(self.selection_text,
+#                                                  font_name='Bebas Neue',
+#                                                  font_size=36,
+#                                                  x=self._width // 2, y=(self._height // 2) - 40,
+#                                                  anchor_x='center', anchor_y='center')
+#
+#         pyglet.clock.schedule_interval(self.update, 1 / 120.0)
+#
+#     def update(self, dt):
+#         self.mineral_text = ""
+#         # print(building_objects)
+#         # self.mineral_text += str(i)
+#         self.mineral_text = "Mineral: " + str(round(globals.player1_lv1_res, 1))  # ℤens
+#         self.mineral_label.text = self.mineral_text
+#         self.metal_text = "Metal: " + str(round(globals.player1_lv2_res, 1))  # ℤens
+#         self.metal_label.text = self.metal_text
+#         self.selection_text_temp = str(game_window_run.player_one.get_select()).split("'")
+#         self.selection_text_temp = str((self.selection_text_temp[1])[8:])
+#         self.selection_text = "Selection: " + str(self.selection_text_temp)
+#         self.selection_label.text = self.selection_text
+#         # print(globals.code)
+#
+#     def on_draw(self):
+#         self.clear()
+#         self.mineral_label.draw()
+#         self.metal_label.draw()
+#         self.selection_label.draw()
+
+
+
+
+
 # square = pyglet.shapes.Rectangle(x=200, y=200, width=200, height=200, color=(55, 55, 255))
 
 # if self.key_handler[key.LEFT] or self.lcounter != 0:
