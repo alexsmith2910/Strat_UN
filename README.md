@@ -9,7 +9,7 @@
 <p align="center">
   <p align="center">
     <a href="https://github.com/SSteers126">
-      <img src="credit/SS_logo.png" alt="Logo" width="80" height="80">
+      <img src="credit/SS_logo_RZ.png" alt="Logo" width="80" height="80">
     </a>
     <a href="https://github.com/alexsmith2910/Strat_UN">
       <img src="src/icon/Strat_un-icon-N.png" alt="Logo" width="80" height="80">
