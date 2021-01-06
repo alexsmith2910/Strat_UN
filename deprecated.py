@@ -213,3 +213,67 @@
 #
 # print(str(len(grad_final)))
 # print(str(len(grad_final[0])))
+
+# g = secrets.randbelow(128)
+# g2 = secrets.randbelow(64)
+# g3 = g - g2
+# if g3 < 1:
+#     g3 = 20
+# g3 += 25
+# b = secrets.randbelow(255)
+
+# globals.astar_map[i - 1].append(1)
+# globals.astar_map.insert(0, [])
+# for i in range(resx // size):
+#     globals.astar_map[0].append(-1)
+
+# for i in range(len(tiles)):
+#     choice = secrets.randbelow(3)
+#     if choice == 0:
+#         x_choice = secrets.randbelow(16)
+#         (tiles[i])[x_choice].color = (0, 0, 255)
+#         (tiles[i])[x_choice].make_barrier()
+#         (globals.astar_map[i])[x_choice] = -1
+#
+#         val_list = []
+#         for i in range(4):
+#             for i in range(10):
+#                 val_list.append(secrets.randbelow(2))
+#             if val_list[0] == 1:
+#                 (tiles[i])[x_choice - 1].color = (100, 100, 255)
+#                 (tiles[i])[x_choice - 1].make_barrier()
+#                 (globals.astar_map[i])[x_choice - 1] = -1
+#             elif val_list[1] == 1:
+#                 (tiles[i])[x_choice + 1].color = (100, 100, 255)
+#                 (tiles[i])[x_choice + 1].make_barrier()
+#                 (globals.astar_map[i])[x_choice + 1] = -1
+#             elif val_list[2] == 1:
+#                 (tiles[i - 1])[x_choice].color = (100, 100, 255)
+#                 (tiles[i - 1])[x_choice].make_barrier()
+#                 (globals.astar_map[i - 1])[x_choice] = -1
+#             elif val_list[3] == 1 and i < resy // 2:
+#                 (tiles[i + 1])[x_choice].color = (100, 100, 255)
+#                 (tiles[i + 1])[x_choice].make_barrier()
+#                 (globals.astar_map[i + 1])[x_choice] = -1
+
+
+# globals.bg_batch.draw()
+# if self.show_grid:
+#     globals.grid_batch.draw()
+# globals.building_batch.draw()
+# globals.small_troop_batch.draw()
+# globals.medium_troop_batch.draw()
+# globals.large_troop_batch.draw()
+# for i in globals.troop_objects:
+#     if i.get_weapon_tracing():
+#         i.get_tracer().draw()
+# globals.tracer_batch.draw()  # Tracer batch doesn't seem to work even after setting the tracer's batch to it
+# globals.hud_batch.draw()
+#     i.draw()
+# for i in globals.troop_objects:
+#     i.draw()
+
+# self.player_one.draw()
+# for i in self.game_objects:
+#     i.draw()
+

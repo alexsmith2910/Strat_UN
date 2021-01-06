@@ -13,6 +13,7 @@ def get_noise():
     #print(onlyfiles)
     chosen = script_loc + "\\generated\\" + str(choice(onlyfiles))
     img = Image.open(chosen)
+    # img = Image.open("c:/users/sebas/downloads/KmFDqavv_o.jpg") # Manual override
     return img
 
 

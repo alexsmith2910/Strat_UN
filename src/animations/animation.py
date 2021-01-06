@@ -15,12 +15,12 @@ drill_frames = os.listdir(drill_path)
 DUA_frames = os.listdir(DUA_path)
 
 for count, i in enumerate(drill_frames):
-    drill_frames[count] = pyglet.image.load(drill_path + i)
+    drill_frames[count] = pyglet.image.load(drill_path / i)
     drill_frames[count].anchor_x = 10
     drill_frames[count].anchor_y = 10
 
 for count, i in enumerate(DUA_frames):
-    DUA_frames[count] = pyglet.image.load(DUA_path + i)
+    DUA_frames[count] = pyglet.image.load(DUA_path / i)
     DUA_frames[count].anchor_x = 10
     DUA_frames[count].anchor_y = 10
 

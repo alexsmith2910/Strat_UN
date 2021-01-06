@@ -69,7 +69,7 @@ sniper_image.anchor_y = 10
 #         drill_frames.append(pyglet.resource.image(filepath))
 # print(drill_frames)
 
-drill_ani = pyglet.image.Animation.from_image_sequence(drill_frames, duration=0.017, loop=True)
+drill_ani = pyglet.image.Animation.from_image_sequence(drill_frames, duration=0.00085, loop=True)
 
 class TileError(Exception):
     """Attributes:
@@ -191,6 +191,10 @@ class TileBG(pyglet.shapes.Rectangle):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.batch = globals.game_batch
+        self.group = globals.map_group
+
         self.modifier = 1
         self.owner = ""
         self.barrier = False
@@ -235,7 +239,8 @@ class Building(TileObject):
     def __init__(self, *args, **kwargs):
         super().__init__(img=building_placeholder_image, *args, **kwargs)
         self.class_type = "Building"
-        self.batch = globals.building_batch
+        self.batch = globals.game_batch
+        self.group = globals.s_building_group
         self.max_health = 1000
         self.health = self.max_health
         self.object_type = "Building"
@@ -261,8 +266,8 @@ class Building(TileObject):
         self.dot = False
         self.dot_strength = None
         self.fire_rate = 1.0
-        self.s_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 20), 20, 2, (0, 0, 255), batch=globals.hud_batch)
-        self.h_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 22), 20, 2, (0, 255, 0), batch=globals.hud_batch)
+        self.h_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 22), 20, 2, globals.h_bar_colour, batch=globals.hud_batch)
+        self.s_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 20), 20, 2, globals.s_bar_colour, batch=globals.hud_batch)
         self.s_bar.opacity = 0
         self.h_bar.opacity = 0
 
@@ -278,19 +283,25 @@ class Building(TileObject):
         pass
 
     def hit(self, damage, imm_strength=None, dot_strength=None, armour_pen=0):
-        pierced = damage * min((1 - (self.armour / 100) + (self.armour_pen / 100)), 1)
         if self.shield > 0:
             self.shield -= damage
+            # print(damage)
             damage = 0
             if self.shield < 0:
                 damage = self.shield * -1
                 self.shield = 0
 
-        elif self.shield <= 0:
+        pierced = damage * min((1 - (self.armour / 100) + (self.armour_pen / 100)), 1)
+
+        if self.shield <= 0:
             self.health -= pierced
 
         if dot_strength != None:
             self.dot_damage += dot_strength
+
+        if imm_strength != None:
+            temp = self.speed
+            self.speed -= (self.speed * imm_strength)
 
     def shield_regen(self, dt):
         if self.shield < self.max_shield:
@@ -300,6 +311,7 @@ class Building(TileObject):
 
     def death_check(self):
         if self.health <= 0:
+            self.x = 10000000000
             del globals.building_objects[globals.building_objects.index(self)]
             print(globals.building_objects)
             # self.x = -100000000
@@ -366,15 +378,20 @@ class Building(TileObject):
             self.color = globals.p4_color
         #print(self.owner)
 
-    def hit(self, damage):
-        self.health -= damage
+    # def hit(self, damage):
+    #     self.health -= damage
 
 class Troop(TileObject):
     overlay_name = "Unedited troop"
     training_time = 5
     def __init__(self, *args, **kwargs):
         super().__init__(img=troop_placeholder_image, *args, **kwargs)
+
+        self.batch = globals.game_batch
+        self.group = globals.s_troop_group
+
         # General Identifiers
+
         self.class_type = "Troop"
         self.object_type = "Troop"
         self.overlay_name = "Null"
@@ -386,11 +403,11 @@ class Troop(TileObject):
         # Defence characteristics
         self.max_health = 250
         self.health = self.max_health
-        self.h_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 22), 20, 2, (0, 255, 0), batch=globals.hud_batch)
+        self.h_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 22), 20, 2, globals.h_bar_colour, batch=globals.hud_batch)
         self.armour = 0
         self.max_shield = 0
         self.shield = self.max_shield
-        self.s_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 20), 20, 2, (0, 0, 255), batch=globals.hud_batch)
+        self.s_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 20), 20, 2, globals.s_bar_colour, batch=globals.hud_batch)
         self.regen = 0
         # Movement and pathfinding characteristics
         self.accel = 0.2
@@ -430,6 +447,16 @@ class Troop(TileObject):
         self.dot_strength = None
 
         self.dot_damage = 0
+
+    def fire(self):
+        self.targeted.hit(self.damage)
+        self.targeted.death_check()
+
+    def set_targetx(self, var):
+        self.targetx = var
+
+    def set_targety(self, var):
+        self.targety = var
 
     def key_left_func(self):
         pass
@@ -565,15 +592,17 @@ class Troop(TileObject):
                         break
 
     def hit(self, damage, imm_strength=None, dot_strength=None, armour_pen=0):
-        pierced = damage * min((1 - (self.armour / 100) + (self.armour_pen / 100)), 1)
         if self.shield > 0:
             self.shield -= damage
+            # print(damage)
             damage = 0
             if self.shield < 0:
                 damage = self.shield * -1
                 self.shield = 0
 
-        elif self.shield <= 0:
+        pierced = damage * min((1 - (self.armour / 100) + (self.armour_pen / 100)), 1)
+
+        if self.shield <= 0:
             self.health -= pierced
 
         if dot_strength != None:
@@ -591,8 +620,9 @@ class Troop(TileObject):
 
     def death_check(self):
         if self.health <= 0:
+            self.x = 10000000000
             del globals.troop_objects[globals.troop_objects.index(self)]
-            print(globals.troop_objects)
+            # print(globals.troop_objects)
             # self.x = -100000000
             # self.y = -100000000
 
@@ -776,7 +806,7 @@ class Troop(TileObject):
                 self.tracer.y = self.y
                 self.tracer.x2 = self.targetx
                 self.tracer.y2 = self.targety
-                self.targeted.hit(self.damage)
+                # self.targeted.hit(self.damage)
                 if self.targeted is not None:
                     self.fire()
                     self.tracer.x2 = self.targetx
@@ -929,6 +959,9 @@ class HQ(Building):
     overlay_name = "HQ"
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)#img=drill_image,
+
+        self.group = globals.l_building_group
+
         self.image = HQ_image
         self.color = (0, 0, 0)
         self.name = "HQ"
@@ -1360,6 +1393,104 @@ class Barracks(Building):
                 self.train_time = 0
                 self.train_bar.opacity = 0
             # print("trained")
+
+
+class Research_station(Building):
+    overlay_name = "Research station"
+    #
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.image = barracks_image
+        self.ol_selection = [Sniper, Dev_Tank]
+        self.selected_index = 0
+        self.queue = []
+        self.ol_queue = []
+        self.max_health = 1000
+        self.health = self.max_health
+        self.object_type = "R&D"
+        self.overlay_name = "Research station"
+        self.menu_options = True
+        self.owner_id = None
+        self.owner_num = None
+        self.name = None
+        self.lv = 1
+        self.armour = 15
+        self.max_shield = 0
+        self.shield = self.max_shield
+        self.regen = 0
+        self.range = -1
+        self.train_flag = False
+        self.train_time = 0
+        self.train_lim = -1
+        self.train_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 19), 20, 1, (255, 168, 1), batch=globals.hud_batch)
+        self.train_bar.opacity = 0
+
+    def train(self):
+        if self.train_flag and self.train_time >= 0:
+            globals.troop_objects.append(self.queue[0](x=self.x, y=self.y))
+            globals.troop_objects[len(globals.building_objects) - 1].set_owner(self.get_owner_id())
+            del self.queue[0]
+
+    def queue_selected(self):
+        self.queue.append(self.ol_selection[self.selected_index])
+
+    def gen_overlay_text(self):
+        l1 = "⇦ and ⇨ to change choice"
+        l2 = "Add to training queue (enter):"
+        l3_select = (self.ol_selection[self.selected_index])
+        l3 = str(self.ol_selection[self.selected_index].overlay_name)
+        self.ol_queue = []
+        for i in self.queue:
+            self.ol_queue.append(i.overlay_name)
+        l4 = str(self.ol_queue)
+        #l3 = ((self.ol_selection[self.selected_index]).get_overlay_name(self))
+        return l1, l2, l3, l4
+
+    def key_right_func(self):
+        self.selected_index += 1
+        if self.selected_index >= len(self.ol_selection):
+            self.selected_index = 0
+            # print((self.ol_selection[self.selected_index].get_overlay_name(self)))
+
+    def key_left_func(self):
+        self.selected_index -= 1
+        if self.selected_index < 0:
+            self.selected_index = (len(self.ol_selection) - 1)
+            # print((self.ol_selection[self.selected_index].get_overlay_name(self)))
+
+    def enter_func(self):
+        # print("started training")
+        self.queue_selected()
+        self.train_time += 0.000001
+
+
+    def update(self, dt):
+        if self.train_time > 0:
+            self.train_lim = self.queue[0].training_time
+            self.train_time += dt
+            self.train_bar.opacity = 255
+            self.train_bar.width = round((self.train_time / self.train_lim) * 20)
+            # print(str(self.train_time - self.train_lim))
+        if self.train_time >= self.train_lim and self.queue != []:
+            globals.troop_objects.append((self.queue[0])(x=self.x, y=self.y))
+            globals.troop_objects[(len(globals.troop_objects) - 1)]\
+                .set_owner((self.get_owner_id(), self.get_owner()))
+            move_x = self.x
+            move_y = self.y
+            while move_x == self.x and move_y == self.y and move_x <= globals.screenresx and move_y <= globals.screenresy:
+                move_x = random.randint(self.x-100, self.x+100)
+                move_y = random.randint(self.y-100, self.y+100)
+            globals.troop_objects[(len(globals.troop_objects) - 1)] \
+                .pathfind((move_x, move_y))
+            #TODO: make troop move away from the building to prevent stacking
+            del self.queue[0]
+            if self.queue != []:
+                self.train_time = 0.000001
+            else:
+                self.train_time = 0
+                self.train_bar.opacity = 0
+            # print("trained")
+
 #Troops
 
 class Dev_Tank(Troop):
@@ -1367,6 +1498,9 @@ class Dev_Tank(Troop):
     training_time = 120
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.group = globals.l_troop_group
+
         self.batch = globals.large_troop_batch
         self.image = dev_tank_image
         self.name = "Dev_Tank"
@@ -1398,16 +1532,6 @@ class Dev_Tank(Troop):
         self.immobilizer = True
         self.immobilizer_strength = 0.5
 
-    def fire(self):
-        self.targeted.hit(self.damage)
-        self.targeted.death_check()
-
-    def set_targetx(self, var):
-        self.targetx = var
-
-    def set_targety(self, var):
-        self.targety = var
-
 class Basic_infantry(Troop):
     overlay_name = "Infantry"
     training_time = 5
@@ -1426,7 +1550,7 @@ class Basic_infantry(Troop):
         # self.trace_opacity = 255
         self.has_tracer = False
         self.damage = 5
-        self.range = 50
+        self.range = 75
         self.lv = 1
         self.max_health = 200
         self.health = self.max_health
@@ -1442,15 +1566,6 @@ class Basic_infantry(Troop):
         self.targeted = None
         self.immobilizer = False
 
-    def fire(self):
-        self.targeted.hit(self.damage)
-        self.targeted.death_check()
-
-    def set_targetx(self, var):
-        self.targetx = var
-
-    def set_targety(self, var):
-        self.targety = var
 
 class Sniper(Troop):
     overlay_name = "Sniper"
@@ -1462,16 +1577,51 @@ class Sniper(Troop):
         self.name = "Sniper"
         self.troop_type = "Light Sniper Infantry"
         self.overlay_name = "Sniper"
-        self.fire_rate = 50
+        self.fire_rate = 20
         self.targetx = 500
         self.targety = 500
         self.tracer_colour = (129, 236, 236)
         self.tracer_width = 1
-        self.tracer = pyglet.shapes.Line(self.x, self.y, self.x, self.y, 2, color=(129, 236, 236), batch=globals.tracer_batch)
+        self.tracer = pyglet.shapes.Line(self.x, self.y, self.x, self.y, 1, color=(129, 236, 236), batch=globals.tracer_batch)
         self.trace_opacity = 255
         self.has_tracer = True
-        self.damage = 450
-        self.range = 50
+        self.damage = 100
+        self.range = 350
+        self.lv = 1
+        self.max_health = 500
+        self.health = self.max_health
+        self.accel = 0.25
+        self.topspeed = 5
+        self.speed = 0
+        self.armour = 10
+        self.max_shield = 0
+        self.shield = self.max_shield
+        self.regen = 0
+        self.first_burst = True
+        self.targeting = False
+        self.targeted = None
+        self.immobilizer = False
+
+class Sniper(Troop):
+    overlay_name = "Sniper"
+    training_time = 20
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.batch = globals.small_troop_batch
+        self.image = sniper_image
+        self.name = "Sniper"
+        self.troop_type = "Light Sniper Infantry"
+        self.overlay_name = "Sniper"
+        self.fire_rate = 20
+        self.targetx = 500
+        self.targety = 500
+        self.tracer_colour = (129, 236, 236)
+        self.tracer_width = 1
+        self.tracer = pyglet.shapes.Line(self.x, self.y, self.x, self.y, 1, color=(129, 236, 236), batch=globals.tracer_batch)
+        self.trace_opacity = 255
+        self.has_tracer = True
+        self.damage = 100
+        self.range = 350
         self.lv = 1
         self.max_health = 500
         self.health = self.max_health
@@ -1492,6 +1642,10 @@ class Player(TileObject):
 
     def __init__(self, *args, **kwargs):
         super().__init__(img=player_image, *args, **kwargs)
+
+        self.batch = globals.game_batch
+        self.group = globals.player_group
+
         self.num = -1
         self.id = None
         self.pixels = 20
@@ -1502,6 +1656,7 @@ class Player(TileObject):
         self.ol_counter = 0
         self.selection = Drill
         self.select_text = "Drill"
+        self.select_num = 0  # TODO: use arrows to allow sections in building toolbar
         globals.player_list.append(self)
 
         #controls
