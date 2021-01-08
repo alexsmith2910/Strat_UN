@@ -28,6 +28,9 @@ class game_window(pyglet.window.Window):
         self.set_caption("Strat_UN")
         self.set_vsync(False)
         self.set_icon(win_icon)
+
+        self.research_items = []
+
         # self.set_fullscreen(True)
         self.player_image = pyglet.image.load("src/sprite/P1-sprite.png")
         self.player_image.anchor_x = 10
@@ -184,9 +187,10 @@ class game_window(pyglet.window.Window):
             self.roverlay_framet = pyglet.shapes.Line(0, yres, xres, yres, 1, (255, 255, 255), batch=globals.research_overlay_batch, group=globals.ol_border_group)
             self.roverlay_frameb = pyglet.shapes.Line(0, 0, xres, 0, 1, (255, 255, 255), batch=globals.research_overlay_batch, group=globals.ol_border_group)
             self.roverlay_tree = research_elements.Branch(direction="NW")
-            self.timg = pyglet.image.load("src/sprite/Dev-tank-sprite.png")
-            self.rtank = pyglet.sprite.Sprite(self.timg, 200, 500, batch=globals.research_overlay_batch, group=globals.ol_fg_group)
-            self.rtank.scale = 0.2
+            self.research_items.append(research_elements.ResearchSlot(700, 700))
+            # self.timg = pyglet.image.load("src/sprite/Dev-tank-sprite.png")
+            # self.rtank = pyglet.sprite.Sprite(self.timg, 200, 500, batch=globals.research_overlay_batch, group=globals.ol_fg_group)
+            # self.rtank.scale = 0.2
 
 
         else:
@@ -620,6 +624,12 @@ class game_window(pyglet.window.Window):
             self.overlay_clickable_targetbool_label.text = "Auto-targeting: "
             self.clickable_owner_text_temp = ""
             self.clickable_targetbool_text_temp = ""
+
+        if self.show_research_overlay:
+            for i in self.research_items:
+                if x >= i.startx and x <= (i.startx + i.width) and y >= i.starty and y <= (i.starty + i.height):
+                    print(i.slot)
+                    break
 
         # print("You clicked on the tile centred at " + str(x_centred) + " " + str(y_centred))
 

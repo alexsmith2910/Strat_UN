@@ -24,5 +24,5 @@ for count, i in enumerate(DUA_frames):
     DUA_frames[count].anchor_x = 10
     DUA_frames[count].anchor_y = 10
 
-drill_ani = pyglet.image.Animation.from_image_sequence(drill_frames, duration=0.017, loop=True)
-DUA_ani = pyglet.image.Animation.from_image_sequence(DUA_frames, duration=0.017, loop=True)
+drill_ani = pyglet.image.Animation.from_image_sequence(drill_frames, duration=1.5, loop=True)
+DUA_ani = pyglet.image.Animation.from_image_sequence(DUA_frames, duration=1.5, loop=True)
