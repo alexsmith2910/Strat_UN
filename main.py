@@ -186,8 +186,14 @@ class game_window(pyglet.window.Window):
             self.roverlay_framer = pyglet.shapes.Line(xres, 0, xres, yres, 1, (255, 255, 255), batch=globals.research_overlay_batch, group=globals.ol_border_group)
             self.roverlay_framet = pyglet.shapes.Line(0, yres, xres, yres, 1, (255, 255, 255), batch=globals.research_overlay_batch, group=globals.ol_border_group)
             self.roverlay_frameb = pyglet.shapes.Line(0, 0, xres, 0, 1, (255, 255, 255), batch=globals.research_overlay_batch, group=globals.ol_border_group)
+            self.roverlay_title = pyglet.text.Label("Research",
+                                                           font_name='Bebas Neue',
+                                                           font_size=15,
+                                                           x=720, y=975, batch=globals.research_overlay_batch, group=globals.ol_fg_group)
             self.roverlay_tree = research_elements.Branch(direction="NW")
-            self.research_items.append(research_elements.ResearchSlot(700, 700))
+            self.research_items.append(research_elements.ResearchSlot(700, 700,
+                                                                      spritesrc=pyglet.image.load("src/sprite/Basic-infantry.png"),
+                                                                      heldclass=objects.Basic_infantry))
             # self.timg = pyglet.image.load("src/sprite/Dev-tank-sprite.png")
             # self.rtank = pyglet.sprite.Sprite(self.timg, 200, 500, batch=globals.research_overlay_batch, group=globals.ol_fg_group)
             # self.rtank.scale = 0.2
@@ -637,6 +643,10 @@ class game_window(pyglet.window.Window):
         self.clear()
         globals.game_batch.draw()
 
+        globals.small_troop_batch.draw()
+        globals.medium_troop_batch.draw()
+        globals.large_troop_batch.draw()
+
         for i in globals.building_objects:
             if i.get_obj_type() == "Tracing turret":
                 i.get_tracer().draw()
@@ -647,6 +657,9 @@ class game_window(pyglet.window.Window):
 
         if self.show_research_overlay:
             globals.research_overlay_batch.draw()
+
+        globals.hud_batch.draw()
+        globals.tracer_batch.draw()
 
     def get_game_objects(self):
         return self.game_objects
