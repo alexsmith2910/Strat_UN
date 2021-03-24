@@ -22,7 +22,6 @@ def dicttomessage(dictionary):
     strdict = strdict.replace("\'", "\"")
     return bytes(stringlen+strdict, "utf-8")
 
-
 # dicttomessage({"move": "right", "building"})
 
 # diction = {"move": "down-left", "building": ["drill", 12]}
@@ -36,6 +35,6 @@ def netlistener():
         clientsocket.send(dicttomessage(globals.building_costs))
 
 
-serthr = threading.Thread(target=netlistener, name="Server thread", daemon=True)
+serthr = threading.Thread(target=netlistener, name="Server thread", daemon=False)
 serthr.start()
 # netlistener()
