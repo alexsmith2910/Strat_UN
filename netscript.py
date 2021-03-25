@@ -4,15 +4,6 @@ import json
 
 import globals
 
-# create the socket
-# AF_INET == ipv4
-# SOCK_STREAM == TCP
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-s.bind((socket.gethostname(), 1234))
-
-s.listen(5)
-
 def dicttomessage(dictionary):
     """Converts a dictionary object to a UTF-8 bytes object prepended with a 4-byte header.
     expects size to be 9999 chars or less, and will otherwise raise a ValueError."""
@@ -35,6 +26,16 @@ def netlistener():
         clientsocket.send(dicttomessage(globals.building_costs))
 
 
-serthr = threading.Thread(target=netlistener, name="Server thread", daemon=False)
-serthr.start()
-# netlistener()
+if __name__ == "__main__":
+    # create the socket
+    # AF_INET == ipv4
+    # SOCK_STREAM == TCP
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    s.bind((socket.gethostname(), 1234))
+
+    s.listen(5)
+
+    serthr = threading.Thread(target=netlistener, name="Server thread", daemon=False)
+    serthr.start()
+    # netlistener()

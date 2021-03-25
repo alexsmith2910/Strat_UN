@@ -58,6 +58,11 @@ p2_HQL = True
 p3_HQL = True
 p4_HQL = True
 
+p1Pos = [0, 0]
+p2Pos = [0, 0]
+p3Pos = [0, 0]
+p4Pos = [0, 0]
+
 h_bar_colour = (15, 255, 0)
 s_bar_colour = (25, 82, 255)
 

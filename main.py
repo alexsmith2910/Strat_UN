@@ -17,6 +17,8 @@ import src
 import gui.research_elements.elements as research_elements
 
 from netscript import dicttomessage
+import threading
+import multiprocessing
 
 myappid = u'Zestyy.Strat_UN.Main.V0.2BETA' # these lines are used to seperate the app from the python 'umbrella'
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -25,13 +27,43 @@ win_icon = pyglet.resource.image("src/icon/Strat_un-icon-N.png")
 
 pyglet.font.add_file("src/BebasNeue-Regular.otf")
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#
+# s.bind((socket.gethostname(), 1235))
+#
+# # s.setblocking(False)
+#
+# s.listen(5)
 
-s.bind((socket.gethostname(), 1235))
+class serverThread(threading.Thread): # threading.Thread
+    def __init__(self):
+        super().__init__()
+        self.daemon = True
+        self.name = "Server thread"
 
-# s.setblocking(False)
+    def dataPush(self):
+        """Pushes relavent data into globals for later usage as a message."""
+        playerPos = globals.p1Pos
+        return {"position": [playerPos[0], playerPos[1]], "resources": [globals.player1_lv1_res, globals.player1_lv2_res, globals.player1_lv3_res], "generation": [globals.player1_lv1_gen, globals.player1_lv2_gen, globals.player1_lv3_gen]}
 
-s.listen(5)
+    def run(self, dt=None):
+        print("serving")
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind((socket.gethostname(), 5469))
+            # s.setblocking(False)
+            s.listen(5)
+            # s.settimeout(1)
+            # s.setblocking(0)
+
+            data = self.dataPush()
+            clientsocket, address = s.accept()
+            clientsocket.send(dicttomessage(data))
+        except socket.timeout:
+            print("Timed out")
+        except Exception as e:
+            print(e)
+
 
 class game_window(pyglet.window.Window):
     def __init__(self):
@@ -70,7 +102,9 @@ class game_window(pyglet.window.Window):
         # globals.troop_objects[len(globals.troop_objects) - 1].health = 10
         self.push_handlers(globals.key_handler)
         pyglet.clock.schedule_interval(self.update, 1 / 120.0)
-        pyglet.clock.schedule_interval(self.serveData, 2)
+        # pyglet.clock.schedule_interval(self.serveData, 1/30)
+        # self.serverThread = multiprocessing.Process(target=self.serveData, name="Server thread") # daemon=True
+        self.winThread = serverThread()
         self.fps_display = pyglet.window.FPSDisplay(self)
         self.input_text = ''
         self.firstt = True  # this serves to avoid the first 't' used to activate the typing,
@@ -82,6 +116,8 @@ class game_window(pyglet.window.Window):
         self.show_data_overlay = False
         self.show_research_overlay = False
         self.clicked_object = None
+        self.winThread.start()
+        pyglet.clock.schedule_interval(self.winThread.run, 1/2)  # TODO: move server to thread to prevent game stoppages
 
     def HQ_spawn(self, players=2, distance=120):
         cur_player = 0
@@ -375,6 +411,7 @@ class game_window(pyglet.window.Window):
     def update(self, dt):
         # super(game_window, self).update(dt)
         # print(self.game_objects)
+        globals.p1Pos = self.player_one.get_pos()
         for obj in self.game_objects:
             obj.update(dt)
             obj.check_bounds()
@@ -681,10 +718,18 @@ class game_window(pyglet.window.Window):
         playerPos = self.player_one.get_pos()
         return {"position": [playerPos[0], playerPos[1]], "resources": [globals.player1_lv1_res, globals.player1_lv2_res, globals.player1_lv3_res], "generation": [globals.player1_lv1_gen, globals.player1_lv2_gen, globals.player1_lv3_gen]}
 
-    def serveData(self, dt):
+    def serveData(self, dt=None):
+        print("serving")
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind((socket.gethostname(), 1235))
+        # s.setblocking(False)
+        s.listen(5)
+
         data = self.dataPush()
         clientsocket, address = s.accept()
         clientsocket.send(dicttomessage(data))
+
+        # s.close()
 
     def tiles_map(self, resx=globals.screenresx, resy=globals.screenresy, size=20):
         grad = pixel_approx.tileize(pixel_approx.get_noise(), size)
