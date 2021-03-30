@@ -1,25 +1,21 @@
-import secrets
-import socket
 from pyglet.window import key
 from pyglet.graphics import *
-import objects
-import globals
+
+import secrets
+import socket
+
 from pathfinding.core.diagonal_movement import DiagonalMovement
 from pathfinding.core.grid import Grid
 from pathfinding.finder.bi_a_star import BiAStarFinder
 
 finder = BiAStarFinder(diagonal_movement=DiagonalMovement.always)
 
-from src.map.prep import pixel_approx
+import objects
+import globals
 import src
-
 import gui.research_elements.elements as research_elements
-
-from net.netscript import dicttomessage
 import threading
-# import multiprocessing
-
-from net import testclient
+import net
 
 myappid = u'Zestyy.Strat_UN.Main.V0.2BETA' # these lines are used to seperate the app from the python 'umbrella'
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -28,13 +24,6 @@ win_icon = pyglet.resource.image("src/icon/Strat_un-icon-N.png")
 
 pyglet.font.add_file("src/BebasNeue-Regular.otf")
 
-# s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#
-# s.bind((socket.gethostname(), 1235))
-#
-# # s.setblocking(False)
-#
-# s.listen(5)
 
 class serverThread(threading.Thread): # threading.Thread
     def __init__(self):
@@ -53,16 +42,13 @@ class serverThread(threading.Thread): # threading.Thread
     def run(self, dt=None):
         print("serving")
         try:
-            # self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            # self.s.bind((socket.gethostname(), 5469))
-            # s.setblocking(False)
             self.s.listen(5)
             # s.settimeout(0.5)
             # s.setblocking(0)
 
             data = self.dataPush()
             clientsocket, address = self.s.accept()
-            clientsocket.send(dicttomessage(data))
+            clientsocket.send(net.dicttomessage(data))
         except socket.timeout:
             print("Timed out")
         except Exception as e:
@@ -70,7 +56,7 @@ class serverThread(threading.Thread): # threading.Thread
             # pass
 
     def kill(self):
-        s.close()
+        self.s.close()
         del self
 
 
@@ -80,7 +66,6 @@ class game_window(pyglet.window.Window):
         self.set_caption("Strat_UN")
         self.set_vsync(False)
         self.set_icon(win_icon)
-
         self.research_items = []
 
         # self.set_fullscreen(True)
@@ -110,13 +95,10 @@ class game_window(pyglet.window.Window):
         # globals.troop_objects.append(objects.Dev_Tank(x=110, y=510))
         # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p4_name, 4))
         self.HQ_spawn()
-        # globals.troop_objects[len(globals.troop_objects) - 1].health = 10
         self.push_handlers(globals.key_handler)
         pyglet.clock.schedule_interval(self.update, 1 / 120.0)
-        # pyglet.clock.schedule_interval(self.serveData, 1/30)
-        # self.serverThread = multiprocessing.Process(target=self.serveData, name="Server thread") # daemon=True
         self.winThread = serverThread()
-        self.client = testclient.ClientThread()
+        self.client = net.testclient.ClientThread()
         self.fps_display = pyglet.window.FPSDisplay(self)
         self.input_text = ''
         self.firstt = True  # this serves to avoid the first 't' used to activate the typing,
@@ -743,12 +725,12 @@ class game_window(pyglet.window.Window):
 
         data = self.dataPush()
         clientsocket, address = s.accept()
-        clientsocket.send(dicttomessage(data))
+        clientsocket.send(net.dicttomessage(data))
 
         # s.close()
 
     def tiles_map(self, resx=globals.screenresx, resy=globals.screenresy, size=20):
-        grad = pixel_approx.tileize(pixel_approx.get_noise(), size)
+        grad = src.pixel_approx.tileize(src.pixel_approx.get_noise(), size)
 
 
         ylayers = resy // size
