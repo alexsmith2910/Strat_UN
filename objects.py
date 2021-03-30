@@ -1732,6 +1732,9 @@ class Player(TileObject):
     def get_y(self):
         return self.y
 
+    def get_pos(self):
+        return [self.x, self.y]
+
     def get_select(self):
         return self.selection
 
@@ -1836,3 +1839,45 @@ class Player(TileObject):
             self.call_counter = 0 if self.call_counter >= 5 else self.call_counter
         if self.ol_counter >= 1:
             self.ol_counter = 0 if self.ol_ounter >= 5 else self.ol_counter
+
+
+class OnlinePlayer(TileObject):
+    """class for generating a object for the player to control"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(img=player_2_image, *args, **kwargs)
+        self.batch = globals.game_batch
+        self.group = globals.player_group
+
+        self.num = -1
+        self.id = None
+        self.pixels = 20
+        # self.key_handler = key.KeyStateHandler()
+        globals.player_list.append(self)
+
+        # controls omitted as it will follow the data recieved
+
+    def set_id(self, new_name, num=1, offline=True):
+        """sets the name for the player, use ONCE per player ONLY"""
+        if self.id == None:
+            self.id = str(new_name)
+            self.num = num
+            globals.player_list.append(str(new_name))
+
+        if num == 2:
+            self.image = player_2_image
+
+    def get_id(self):
+        if self.id != None:
+            return self.id, self.num
+        else:
+            raise NameError("Object has been attempted to be generated without player being given an ID", 0)
+
+    def get_x(self):
+        return self.x
+
+    def get_y(self):
+        return self.y
+
+    def get_pos(self):
+        return [self.x, self.y]

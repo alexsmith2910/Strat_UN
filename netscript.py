@@ -32,7 +32,7 @@ if __name__ == "__main__":
     # SOCK_STREAM == TCP
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    s.bind((socket.gethostname(), 1234))
+    s.bind((socket.gethostname(), 5482))
 
     s.listen(5)
 

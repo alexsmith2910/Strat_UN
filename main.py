@@ -18,7 +18,9 @@ import gui.research_elements.elements as research_elements
 
 from netscript import dicttomessage
 import threading
-import multiprocessing
+# import multiprocessing
+
+import testclient
 
 myappid = u'Zestyy.Strat_UN.Main.V0.2BETA' # these lines are used to seperate the app from the python 'umbrella'
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -41,19 +43,20 @@ class serverThread(threading.Thread): # threading.Thread
         self.daemon = True
         self.name = "Server thread"
 
+
     def dataPush(self):
         """Pushes relavent data into globals for later usage as a message."""
         playerPos = globals.p1Pos
-        return {"position": [playerPos[0], playerPos[1]], "resources": [globals.player1_lv1_res, globals.player1_lv2_res, globals.player1_lv3_res], "generation": [globals.player1_lv1_gen, globals.player1_lv2_gen, globals.player1_lv3_gen]}
+        return {"type": "", "position": [playerPos[0], playerPos[1]], "resources": [globals.player1_lv1_res, globals.player1_lv2_res, globals.player1_lv3_res], "generation": [globals.player1_lv1_gen, globals.player1_lv2_gen, globals.player1_lv3_gen]}
 
     def run(self, dt=None):
-        print("serving")
+        # print("serving")
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind((socket.gethostname(), 5469))
             # s.setblocking(False)
             s.listen(5)
-            # s.settimeout(1)
+            # s.settimeout(0.5)
             # s.setblocking(0)
 
             data = self.dataPush()
@@ -62,7 +65,12 @@ class serverThread(threading.Thread): # threading.Thread
         except socket.timeout:
             print("Timed out")
         except Exception as e:
-            print(e)
+            # print(e)
+            pass
+
+    def kill(self):
+        s.close()
+        del self
 
 
 class game_window(pyglet.window.Window):
@@ -83,7 +91,9 @@ class game_window(pyglet.window.Window):
         globals.bg_tiles, globals.bg_batch = self.tiles_map()
         self.player_one = objects.Player(x=550, y=550)
         self.player_one.set_id(globals.p1_name, 1)
-        self.game_objects = [self.player_one]
+        self.player_two = objects.OnlinePlayer(x=700, y=700)
+        self.player_two.set_id(globals.p2_name, 2)
+        self.game_objects = [self.player_one, self.player_two]
         if globals.offline_multi:
             self.player_two = objects.Player(x=650, y=650)
             self.player_two.set_id(globals.p2_name, 2)
@@ -105,6 +115,7 @@ class game_window(pyglet.window.Window):
         # pyglet.clock.schedule_interval(self.serveData, 1/30)
         # self.serverThread = multiprocessing.Process(target=self.serveData, name="Server thread") # daemon=True
         self.winThread = serverThread()
+        self.client = testclient.ClientThread()
         self.fps_display = pyglet.window.FPSDisplay(self)
         self.input_text = ''
         self.firstt = True  # this serves to avoid the first 't' used to activate the typing,
@@ -117,7 +128,8 @@ class game_window(pyglet.window.Window):
         self.show_research_overlay = False
         self.clicked_object = None
         self.winThread.start()
-        pyglet.clock.schedule_interval(self.winThread.run, 1/2)  # TODO: move server to thread to prevent game stoppages
+        self.client.start()
+        pyglet.clock.schedule_interval(self.winThread.run, 1)  # TODO: move server to thread to prevent game stoppages
 
     def HQ_spawn(self, players=2, distance=120):
         cur_player = 0
@@ -412,6 +424,9 @@ class game_window(pyglet.window.Window):
         # super(game_window, self).update(dt)
         # print(self.game_objects)
         globals.p1Pos = self.player_one.get_pos()
+        self.player_two.x = globals.p2Pos[0]-20
+        self.player_two.y = globals.p2Pos[1]-20
+        # print(globals.p2Pos)
         for obj in self.game_objects:
             obj.update(dt)
             obj.check_bounds()

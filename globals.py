@@ -49,9 +49,9 @@ p3_color = (160, 255, 100)
 p4_color = (255, 255, 100)
 
 p1_name = "Zestyy"
-p2_name = "Elite"
-p3_name = "AJS"
-p4_name = "P4"
+p2_name = "The creep"
+p3_name = "Smuuvi"
+p4_name = "AJS"
 
 p1_HQL = True # HQ Life - flag for if the player's HQ is still in play
 p2_HQL = True
