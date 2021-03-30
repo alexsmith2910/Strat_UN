@@ -467,7 +467,7 @@ class Troop(TileObject):
     def enter_func(self):
         pass
 
-    def range_sort(self, array):
+    def range_sort(self, array):  # TODO: bug duplicates first object in array
         self.auto_targeting_array = []
         for i in array:
             if self.auto_targeting_array == []:
@@ -542,12 +542,14 @@ class Troop(TileObject):
                 if i.get_owner() != self.owner_num and i.get_range() < self.range:
                     # print("found target" + str(i)) # D
                     self.pathfind((i.get_x(), i.get_y()))
+                    found = True
                     break
 
             if self.targeted == None:
                 for i in self.auto_targeting_array:
                     if i.get_owner() != self.owner_num:
                         self.pathfind((i.get_x(), i.get_y()))
+                        found = True
                         break
 
         elif self.target_type_allowed[0] == "Troop":
@@ -555,16 +557,23 @@ class Troop(TileObject):
             for i in self.auto_targeting_array:
                 if i.get_owner() != self.owner_num and i.get_range() < self.range:
                     self.pathfind((i.get_x(), i.get_y()))
+                    print(self.auto_targeting_array)
+                    print("found troop in range")
+                    found = True
                     break
 
             if self.targeted == None:
                 for i in self.auto_targeting_array:
                     if i.get_owner() != self.owner_num:
                         self.pathfind((i.get_x(), i.get_y()))
+                        print(self.auto_targeting_array)
+                        print(globals.troop_objects)
+                        print("found troop")
+                        found = True
                         break
 
         if self.target_type_allowed[0] == "Troop" and \
-                self.target_type_allowed[1] == "Preferred" and not self.targeting:
+                self.target_type_allowed[1] == "Preferred" and not found:
             self.range_sort(globals.building_objects)
             for i in self.auto_targeting_array:
                 if i.get_owner() != self.owner_num and i.get_range() < self.range:
@@ -575,10 +584,13 @@ class Troop(TileObject):
                 for i in self.auto_targeting_array:
                     if i.get_owner() != self.owner_num:
                         self.pathfind((i.get_x(), i.get_y()))
+                        print("troop preferred, found building")
+                        print(self.auto_targeting_array)
+                        found = True
                         break
 
         if self.target_type_allowed[0] == "Building" and \
-                self.target_type_allowed[1] == "Preferred" and not self.targeting:
+                self.target_type_allowed[1] == "Preferred" and not found:
             self.range_sort(globals.troop_objects)
             for i in self.auto_targeting_array:
                 if i.get_owner() != self.owner_num and i.get_range() < self.range:
@@ -748,7 +760,7 @@ class Troop(TileObject):
         else:
             if self.target_type_allowed[0] == "Building":
                 for i in globals.building_objects:
-                    if i.get_owner() != self.owner_num and self.targeting is False:
+                    if i.get_owner() != self.owner_num and not self.targeting:
                         self.targetx = i.get_x()
                         self.targety = i.get_y()
                         if math.sqrt(((self.x - self.targetx)**2) + ((self.y - self.targety)**2)) <= self.range:
@@ -1528,6 +1540,7 @@ class Dev_Tank(Troop):
         self.first_burst = True
         self.targeting = False
         self.targeted = None
+        self.target_type_allowed = ("Troop", "Preferred")
 
         self.immobilizer = True
         self.immobilizer_strength = 0.5

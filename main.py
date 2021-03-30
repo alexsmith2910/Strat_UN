@@ -1,5 +1,4 @@
 import secrets
-import ctypes
 import socket
 from pyglet.window import key
 from pyglet.graphics import *
@@ -16,11 +15,11 @@ import src
 
 import gui.research_elements.elements as research_elements
 
-from netscript import dicttomessage
+from net.netscript import dicttomessage
 import threading
 # import multiprocessing
 
-import testclient
+from net import testclient
 
 myappid = u'Zestyy.Strat_UN.Main.V0.2BETA' # these lines are used to seperate the app from the python 'umbrella'
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -42,6 +41,8 @@ class serverThread(threading.Thread): # threading.Thread
         super().__init__()
         self.daemon = True
         self.name = "Server thread"
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.s.bind((socket.gethostname(), 5469))
 
 
     def dataPush(self):
@@ -50,23 +51,23 @@ class serverThread(threading.Thread): # threading.Thread
         return {"type": "", "position": [playerPos[0], playerPos[1]], "resources": [globals.player1_lv1_res, globals.player1_lv2_res, globals.player1_lv3_res], "generation": [globals.player1_lv1_gen, globals.player1_lv2_gen, globals.player1_lv3_gen]}
 
     def run(self, dt=None):
-        # print("serving")
+        print("serving")
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.bind((socket.gethostname(), 5469))
+            # self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # self.s.bind((socket.gethostname(), 5469))
             # s.setblocking(False)
-            s.listen(5)
+            self.s.listen(5)
             # s.settimeout(0.5)
             # s.setblocking(0)
 
             data = self.dataPush()
-            clientsocket, address = s.accept()
+            clientsocket, address = self.s.accept()
             clientsocket.send(dicttomessage(data))
         except socket.timeout:
             print("Timed out")
         except Exception as e:
-            # print(e)
-            pass
+            print(e)
+            # pass
 
     def kill(self):
         s.close()
@@ -129,7 +130,7 @@ class game_window(pyglet.window.Window):
         self.clicked_object = None
         self.winThread.start()
         self.client.start()
-        pyglet.clock.schedule_interval(self.winThread.run, 1)  # TODO: move server to thread to prevent game stoppages
+        pyglet.clock.schedule_interval(self.winThread.run, 0.5)  # TODO: move server to thread to prevent game stoppages
 
     def HQ_spawn(self, players=2, distance=120):
         cur_player = 0
