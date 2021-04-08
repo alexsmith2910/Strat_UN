@@ -2,11 +2,29 @@ import pyglet
 from pathfinding.core.diagonal_movement import DiagonalMovement
 from pathfinding.core.grid import Grid
 from pathfinding.finder.bi_a_star import BiAStarFinder
+from socket import gethostname
+import configparser
+
+settings = configparser.ConfigParser()
+settings.read("settings.ini")
+
+if settings["ONLINE"]["address"] == "localhost":
+    recipient = gethostname()
+else:
+    recipient = settings["ONLINE"]["address"]
 
 finder = BiAStarFinder(diagonal_movement=DiagonalMovement.always)
 
 #use to comtrol offline multiplayer
 offline_multi = False
+
+# Online multiplayer control and data storage
+online_multi = True
+
+online_sending = {}
+online_received = {}
+
+onl_r_spawns = {}
 
 # NOTE: currently being used since my keyboard seems to treat the numpad as OEM.
 # set this to True if your numpad does nothing in 2 player mode (i.e not selecting the different buildings for P2)

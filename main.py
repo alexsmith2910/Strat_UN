@@ -17,7 +17,7 @@ import gui.research_elements.elements as research_elements
 import threading
 import net
 
-myappid = u'Zestyy.Strat_UN.Main.V0.2BETA' # these lines are used to seperate the app from the python 'umbrella'
+myappid = u'Zestyy.Strat_UN.Main.V0.2BETA'  # these lines are used to seperate the app from the python 'umbrella'
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
 win_icon = pyglet.resource.image("src/icon/Strat_un-icon-N.png")
@@ -25,22 +25,41 @@ win_icon = pyglet.resource.image("src/icon/Strat_un-icon-N.png")
 pyglet.font.add_file("src/BebasNeue-Regular.otf")
 
 
-class serverThread(threading.Thread): # threading.Thread
+class serverThread(threading.Thread):  # threading.Thread
     def __init__(self):
         super().__init__()
         self.daemon = True
         self.name = "Server thread"
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.s.bind((socket.gethostname(), 5469))
-
+        # if globals.recipient == "localhost":
+        #     self.s.bind((socket.gethostname(), 5469))
+        # else:
+        #     print(globals.recipient)
+        if globals.recipient == "localhost":
+            self.s.bind((globals.recipient, 5469))
+        else:
+            self.s.connect((globals.recipient, 5469))
+            #  External IP usage results in error, check if port forwarding is needed
 
     def dataPush(self):
         """Pushes relavent data into globals for later usage as a message."""
         playerPos = globals.p1Pos
-        return {"type": "", "position": [playerPos[0], playerPos[1]], "resources": [globals.player1_lv1_res, globals.player1_lv2_res, globals.player1_lv3_res], "generation": [globals.player1_lv1_gen, globals.player1_lv2_gen, globals.player1_lv3_gen]}
+        data = {"type": "", "position": [playerPos[0], playerPos[1]],
+                "resources": [globals.player1_lv1_res, globals.player1_lv2_res, globals.player1_lv3_res],
+                "generation": [globals.player1_lv1_gen, globals.player1_lv2_gen, globals.player1_lv3_gen]}
+        if "spawn" in globals.online_sending:
+            # print("found spawn tag: {0}".format(str(globals.online_sending)))
+            data["spawn"] = globals.online_sending.pop("spawn")
+
+        if "build" in globals.online_sending:
+            # print("found spawn tag: {0}".format(str(globals.online_sending)))
+            data["build"] = globals.online_sending.pop("build")
+
+        # globals.onl_sending = {}  # When all keys are popped this shouldn't be necessary
+        return data
 
     def run(self, dt=None):
-        print("serving")
+        # print("serving")
         try:
             self.s.listen(5)
             # s.settimeout(0.5)
@@ -52,7 +71,7 @@ class serverThread(threading.Thread): # threading.Thread
         except socket.timeout:
             print("Timed out")
         except Exception as e:
-            print(e)
+            print("Server: " + str(e))
             # pass
 
     def kill(self):
@@ -67,7 +86,7 @@ class game_window(pyglet.window.Window):
         self.set_vsync(False)
         self.set_icon(win_icon)
         self.research_items = []
-
+        # print(objects.str_to_class("Barracks"))  # tested and works in main namespace
         # self.set_fullscreen(True)
         self.player_image = pyglet.image.load("src/sprite/P1-sprite.png")
         self.player_image.anchor_x = 10
@@ -90,15 +109,17 @@ class game_window(pyglet.window.Window):
         globals.troop_objects[len(globals.troop_objects) - 1].health = 500
         globals.troop_objects.append(objects.Dev_Tank(x=710, y=410))
         globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p2_name, 2))
+        print(globals.troop_objects[len(globals.troop_objects) - 1].get_id())
         # globals.troop_objects.append(objects.Dev_Tank(x=1010, y=810))
         # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p3_name, 3))
         # globals.troop_objects.append(objects.Dev_Tank(x=110, y=510))
         # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p4_name, 4))
         self.HQ_spawn()
+        print(globals.building_objects[0].get_id())
         self.push_handlers(globals.key_handler)
         pyglet.clock.schedule_interval(self.update, 1 / 120.0)
         self.winThread = serverThread()
-        self.client = net.testclient.ClientThread()
+        self.client = net.client.ClientThread()
         self.fps_display = pyglet.window.FPSDisplay(self)
         self.input_text = ''
         self.firstt = True  # this serves to avoid the first 't' used to activate the typing,
@@ -112,7 +133,7 @@ class game_window(pyglet.window.Window):
         self.clicked_object = None
         self.winThread.start()
         self.client.start()
-        pyglet.clock.schedule_interval(self.winThread.run, 0.5)  # TODO: move server to thread to prevent game stoppages
+        pyglet.clock.schedule_interval(self.winThread.run, 0.1)  # TODO: move server to thread to prevent game stoppages
 
     def HQ_spawn(self, players=2, distance=120):
         cur_player = 0
@@ -129,26 +150,31 @@ class game_window(pyglet.window.Window):
                             if j.x >= globals.screenresx - distance:
                                 tile_copy.append(j)
             chosen = secrets.choice(tile_copy)
-            globals.building_objects.append(objects.HQ(x=chosen.get_x()+10, y=chosen.get_y()+10))
+            globals.building_objects.append(objects.HQ(x=chosen.get_x() + 10, y=chosen.get_y() + 10))
             if cur_player == 1:
                 globals.building_objects[len(globals.building_objects) - 1].set_owner((globals.p1_name, 1))
             elif cur_player == 2:
                 globals.building_objects[len(globals.building_objects) - 1].set_owner((globals.p2_name, 2))
 
     def gen_overlays(self, xres=globals.screenresx, yres=globals.screenresy):
-        #TODO: make overlay compatible with 2 player play, either if else 2 generations or let the original be generated then move
+        # TODO: make overlay compatible with 2 player play, either if else 2 generations or let the original be generated then move
 
         if not globals.offline_multi:
-            self.ol_range = pyglet.shapes.Circle(x=0, y=0, radius=200, color=(255, 255, 255), batch=globals.data_overlay_batch, group=globals.ol_bg_group)
+            self.ol_range = pyglet.shapes.Circle(x=0, y=0, radius=200, color=(255, 255, 255),
+                                                 batch=globals.data_overlay_batch, group=globals.ol_bg_group)
             self.ol_range.opacity = 50
 
-            self.overlay_bg = pyglet.shapes.Rectangle(500, 0, 500, 300, (0, 0, 0), batch=globals.data_overlay_batch, group=globals.ol_bg_group)
+            self.overlay_bg = pyglet.shapes.Rectangle(500, 0, 500, 300, (0, 0, 0), batch=globals.data_overlay_batch,
+                                                      group=globals.ol_bg_group)
             self.overlay_bg.opacity = 150
             self.overlay_bg_frameh = pyglet.shapes.Line(500, 300, 1000, 300, 1, (255, 255, 255),
                                                         batch=globals.data_overlay_batch, group=globals.ol_border_group)
-            self.overlay_bg_framev1 = pyglet.shapes.Line(500, 0, 500, 300, 1, (255, 255, 255), batch=globals.data_overlay_batch, group=globals.ol_border_group)
+            self.overlay_bg_framev1 = pyglet.shapes.Line(500, 0, 500, 300, 1, (255, 255, 255),
+                                                         batch=globals.data_overlay_batch,
+                                                         group=globals.ol_border_group)
             self.overlay_bg_framev2 = pyglet.shapes.Line(1000, 0, 1000, 300, 1, (255, 255, 255),
-                                                         batch=globals.data_overlay_batch, group=globals.ol_border_group)
+                                                         batch=globals.data_overlay_batch,
+                                                         group=globals.ol_border_group)
             self.mineral_text = "Mineral text here"
             self.metal_text = "Metal text here"
             self.oil_text = "Oil text here"
@@ -172,70 +198,92 @@ class game_window(pyglet.window.Window):
             self.overlay_mineral_label = pyglet.text.Label(self.mineral_text,
                                                            font_name='Bebas Neue',
                                                            font_size=15,
-                                                           x=505, y=280, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                           x=505, y=280, batch=globals.data_overlay_batch,
+                                                           group=globals.ol_fg_group)
             self.overlay_metal_label = pyglet.text.Label(self.metal_text,
                                                          font_name='Bebas Neue',
                                                          font_size=15,
-                                                         x=505, y=260, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                         x=505, y=260, batch=globals.data_overlay_batch,
+                                                         group=globals.ol_fg_group)
             self.overlay_oil_label = pyglet.text.Label(self.oil_text,
                                                        font_name='Bebas Neue',
                                                        font_size=15,
-                                                       x=505, y=240, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                       x=505, y=240, batch=globals.data_overlay_batch,
+                                                       group=globals.ol_fg_group)
             self.overlay_selection_label = pyglet.text.Label(self.selection_text,
                                                              font_name='Bebas Neue',
                                                              font_size=15,
-                                                             x=505, y=220, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                             x=505, y=220, batch=globals.data_overlay_batch,
+                                                             group=globals.ol_fg_group)
             self.overlay_clickable_label = pyglet.text.Label(self.clickable_text,
                                                              font_name='Bebas Neue',
                                                              font_size=15,
-                                                             x=505, y=200, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                             x=505, y=200, batch=globals.data_overlay_batch,
+                                                             group=globals.ol_fg_group)
             self.overlay_clickable_owner_label = pyglet.text.Label(self.clickable_owner_text,
                                                                    font_name='Bebas Neue',
                                                                    font_size=15,
-                                                                   x=505, y=180, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                   x=505, y=180, batch=globals.data_overlay_batch,
+                                                                   group=globals.ol_fg_group)
             self.overlay_clickable_targetbool_label = pyglet.text.Label(self.clickable_targetbool_text,
                                                                         font_name='Bebas Neue',
                                                                         font_size=15,
-                                                                        x=505, y=160, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                        x=505, y=160, batch=globals.data_overlay_batch,
+                                                                        group=globals.ol_fg_group)
             # anchor_x='center', anchor_y='center'
             self.overlay_clickable_return_l1_label = pyglet.text.Label(self.clickable_return_l1_text,
                                                                        font_name='Bebas Neue',
                                                                        font_size=15,
                                                                        x=750, y=80, anchor_x='center',
-                                                                       batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                       batch=globals.data_overlay_batch,
+                                                                       group=globals.ol_fg_group)
             # align="center",
             self.overlay_clickable_return_l2_label = pyglet.text.Label(self.clickable_return_l2_text,
                                                                        font_name='Bebas Neue',
                                                                        font_size=15,
                                                                        x=750, y=60, anchor_x='center',
-                                                                       batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                       batch=globals.data_overlay_batch,
+                                                                       group=globals.ol_fg_group)
             self.overlay_clickable_return_l3_label = pyglet.text.Label(self.clickable_return_l3_text,
                                                                        font_name='Bebas Neue',
                                                                        font_size=15,
                                                                        x=750, y=40, anchor_x='center',
-                                                                       batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                       batch=globals.data_overlay_batch,
+                                                                       group=globals.ol_fg_group)
             self.overlay_clickable_return_l4_label = pyglet.text.Label(self.clickable_return_l4_text,
                                                                        font_name='Bebas Neue',
                                                                        font_size=12,
                                                                        x=750, y=20, anchor_x='center',
-                                                                       batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                       batch=globals.data_overlay_batch,
+                                                                       group=globals.ol_fg_group)
 
             # Elements for the reasearch overlay
 
-            self.roverlay_bg = pyglet.shapes.Rectangle(0, 0, xres, yres, (0, 0, 0), batch=globals.research_overlay_batch, group=globals.ol_bg_group)
+            self.roverlay_bg = pyglet.shapes.Rectangle(0, 0, xres, yres, (0, 0, 0),
+                                                       batch=globals.research_overlay_batch, group=globals.ol_bg_group)
             self.roverlay_bg.opacity = 150
 
-            self.roverlay_framel = pyglet.shapes.Line(0, 0, 0, yres, 1, (255, 255, 255), batch=globals.research_overlay_batch, group=globals.ol_border_group)
-            self.roverlay_framer = pyglet.shapes.Line(xres, 0, xres, yres, 1, (255, 255, 255), batch=globals.research_overlay_batch, group=globals.ol_border_group)
-            self.roverlay_framet = pyglet.shapes.Line(0, yres, xres, yres, 1, (255, 255, 255), batch=globals.research_overlay_batch, group=globals.ol_border_group)
-            self.roverlay_frameb = pyglet.shapes.Line(0, 0, xres, 0, 1, (255, 255, 255), batch=globals.research_overlay_batch, group=globals.ol_border_group)
+            self.roverlay_framel = pyglet.shapes.Line(0, 0, 0, yres, 1, (255, 255, 255),
+                                                      batch=globals.research_overlay_batch,
+                                                      group=globals.ol_border_group)
+            self.roverlay_framer = pyglet.shapes.Line(xres, 0, xres, yres, 1, (255, 255, 255),
+                                                      batch=globals.research_overlay_batch,
+                                                      group=globals.ol_border_group)
+            self.roverlay_framet = pyglet.shapes.Line(0, yres, xres, yres, 1, (255, 255, 255),
+                                                      batch=globals.research_overlay_batch,
+                                                      group=globals.ol_border_group)
+            self.roverlay_frameb = pyglet.shapes.Line(0, 0, xres, 0, 1, (255, 255, 255),
+                                                      batch=globals.research_overlay_batch,
+                                                      group=globals.ol_border_group)
             self.roverlay_title = pyglet.text.Label("Research",
-                                                           font_name='Bebas Neue',
-                                                           font_size=15,
-                                                           x=720, y=975, batch=globals.research_overlay_batch, group=globals.ol_fg_group)
+                                                    font_name='Bebas Neue',
+                                                    font_size=15,
+                                                    x=720, y=975, batch=globals.research_overlay_batch,
+                                                    group=globals.ol_fg_group)
             self.roverlay_tree = research_elements.Branch(direction="NW")
             self.research_items.append(research_elements.ResearchSlot(700, 700,
-                                                                      spritesrc=pyglet.image.load("src/sprite/Basic-infantry.png"),
+                                                                      spritesrc=pyglet.image.load(
+                                                                          "src/sprite/Basic-infantry.png"),
                                                                       heldclass=objects.Basic_infantry))
             # self.timg = pyglet.image.load("src/sprite/Dev-tank-sprite.png")
             # self.rtank = pyglet.sprite.Sprite(self.timg, 200, 500, batch=globals.research_overlay_batch, group=globals.ol_fg_group)
@@ -243,15 +291,18 @@ class game_window(pyglet.window.Window):
 
 
         else:
-            #player 1's overlay
-            self.overlay_bg = pyglet.shapes.Rectangle(200, 0, 500, 300, (1, 49, 122), batch=globals.data_overlay_batch, group=globals.ol_bg_group)
+            # player 1's overlay
+            self.overlay_bg = pyglet.shapes.Rectangle(200, 0, 500, 300, (1, 49, 122), batch=globals.data_overlay_batch,
+                                                      group=globals.ol_bg_group)
             self.overlay_bg.opacity = 100
             self.overlay_bg_frameh = pyglet.shapes.Line(200, 300, 700, 300, 1, (255, 255, 255),
                                                         batch=globals.data_overlay_batch, group=globals.ol_border_group)
             self.overlay_bg_framev1 = pyglet.shapes.Line(200, 0, 200, 300, 1, (255, 255, 255),
-                                                         batch=globals.data_overlay_batch, group=globals.ol_border_group)
+                                                         batch=globals.data_overlay_batch,
+                                                         group=globals.ol_border_group)
             self.overlay_bg_framev2 = pyglet.shapes.Line(700, 0, 700, 300, 1, (255, 255, 255),
-                                                         batch=globals.data_overlay_batch, group=globals.ol_border_group)
+                                                         batch=globals.data_overlay_batch,
+                                                         group=globals.ol_border_group)
             self.mineral_text = "Mineral text here"
             self.metal_text = "Metal text here"
             self.oil_text = "Oil text here"
@@ -275,63 +326,78 @@ class game_window(pyglet.window.Window):
             self.overlay_mineral_label = pyglet.text.Label(self.mineral_text,
                                                            font_name='Bebas Neue',
                                                            font_size=15,
-                                                           x=205, y=280, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                           x=205, y=280, batch=globals.data_overlay_batch,
+                                                           group=globals.ol_fg_group)
             self.overlay_metal_label = pyglet.text.Label(self.metal_text,
                                                          font_name='Bebas Neue',
                                                          font_size=15,
-                                                         x=205, y=260, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                         x=205, y=260, batch=globals.data_overlay_batch,
+                                                         group=globals.ol_fg_group)
             self.overlay_oil_label = pyglet.text.Label(self.oil_text,
                                                        font_name='Bebas Neue',
                                                        font_size=15,
-                                                       x=205, y=240, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                       x=205, y=240, batch=globals.data_overlay_batch,
+                                                       group=globals.ol_fg_group)
             self.overlay_selection_label = pyglet.text.Label(self.selection_text,
                                                              font_name='Bebas Neue',
                                                              font_size=15,
-                                                             x=205, y=220, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                             x=205, y=220, batch=globals.data_overlay_batch,
+                                                             group=globals.ol_fg_group)
             self.overlay_clickable_label = pyglet.text.Label(self.clickable_text,
                                                              font_name='Bebas Neue',
                                                              font_size=15,
-                                                             x=205, y=200, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                             x=205, y=200, batch=globals.data_overlay_batch,
+                                                             group=globals.ol_fg_group)
             self.overlay_clickable_owner_label = pyglet.text.Label(self.clickable_owner_text,
                                                                    font_name='Bebas Neue',
                                                                    font_size=15,
-                                                                   x=205, y=180, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                   x=205, y=180, batch=globals.data_overlay_batch,
+                                                                   group=globals.ol_fg_group)
             self.overlay_clickable_targetbool_label = pyglet.text.Label(self.clickable_targetbool_text,
                                                                         font_name='Bebas Neue',
                                                                         font_size=15,
-                                                                        x=205, y=160, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                        x=205, y=160, batch=globals.data_overlay_batch,
+                                                                        group=globals.ol_fg_group)
             # anchor_x='center', anchor_y='center'
             self.overlay_clickable_return_l1_label = pyglet.text.Label(self.clickable_return_l1_text,
                                                                        font_name='Bebas Neue',
                                                                        font_size=15,
                                                                        x=450, y=80, anchor_x='center',
-                                                                       batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                       batch=globals.data_overlay_batch,
+                                                                       group=globals.ol_fg_group)
             # align="center",
             self.overlay_clickable_return_l2_label = pyglet.text.Label(self.clickable_return_l2_text,
                                                                        font_name='Bebas Neue',
                                                                        font_size=15,
                                                                        x=450, y=60, anchor_x='center',
-                                                                       batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                       batch=globals.data_overlay_batch,
+                                                                       group=globals.ol_fg_group)
             self.overlay_clickable_return_l3_label = pyglet.text.Label(self.clickable_return_l3_text,
                                                                        font_name='Bebas Neue',
                                                                        font_size=15,
                                                                        x=450, y=40, anchor_x='center',
-                                                                       batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                       batch=globals.data_overlay_batch,
+                                                                       group=globals.ol_fg_group)
             self.overlay_clickable_return_l4_label = pyglet.text.Label(self.clickable_return_l4_text,
                                                                        font_name='Bebas Neue',
                                                                        font_size=12,
                                                                        x=450, y=20, anchor_x='center',
-                                                                       batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                       batch=globals.data_overlay_batch,
+                                                                       group=globals.ol_fg_group)
 
-            #player 2's overlay
-            self.p2_overlay_bg = pyglet.shapes.Rectangle(800, 0, 500, 300, (130, 39, 39), batch=globals.data_overlay_batch, group=globals.ol_bg_group)
+            # player 2's overlay
+            self.p2_overlay_bg = pyglet.shapes.Rectangle(800, 0, 500, 300, (130, 39, 39),
+                                                         batch=globals.data_overlay_batch, group=globals.ol_bg_group)
             self.p2_overlay_bg.opacity = 100
             self.p2_overlay_bg_frameh = pyglet.shapes.Line(800, 300, 1300, 300, 1, (255, 255, 255),
-                                                           batch=globals.data_overlay_batch, group=globals.ol_border_group)
+                                                           batch=globals.data_overlay_batch,
+                                                           group=globals.ol_border_group)
             self.p2_overlay_bg_framev1 = pyglet.shapes.Line(800, 0, 800, 300, 1, (255, 255, 255),
-                                                            batch=globals.data_overlay_batch, group=globals.ol_border_group)
+                                                            batch=globals.data_overlay_batch,
+                                                            group=globals.ol_border_group)
             self.p2_overlay_bg_framev2 = pyglet.shapes.Line(1300, 0, 1300, 300, 1, (255, 255, 255),
-                                                            batch=globals.data_overlay_batch, group=globals.ol_border_group)
+                                                            batch=globals.data_overlay_batch,
+                                                            group=globals.ol_border_group)
             self.p2_mineral_text = "Mineral text here"
             self.p2_metal_text = "Metal text here"
             self.p2_oil_text = "Oil text here"
@@ -355,60 +421,105 @@ class game_window(pyglet.window.Window):
             self.p2_overlay_mineral_label = pyglet.text.Label(self.p2_mineral_text,
                                                               font_name='Bebas Neue',
                                                               font_size=15,
-                                                              x=805, y=280, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                              x=805, y=280, batch=globals.data_overlay_batch,
+                                                              group=globals.ol_fg_group)
             self.p2_overlay_metal_label = pyglet.text.Label(self.p2_metal_text,
                                                             font_name='Bebas Neue',
                                                             font_size=15,
-                                                            x=805, y=260, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                            x=805, y=260, batch=globals.data_overlay_batch,
+                                                            group=globals.ol_fg_group)
             self.p2_overlay_oil_label = pyglet.text.Label(self.p2_oil_text,
                                                           font_name='Bebas Neue',
                                                           font_size=15,
-                                                          x=805, y=240, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                          x=805, y=240, batch=globals.data_overlay_batch,
+                                                          group=globals.ol_fg_group)
             self.p2_overlay_selection_label = pyglet.text.Label(self.p2_selection_text,
                                                                 font_name='Bebas Neue',
                                                                 font_size=15,
-                                                                x=805, y=220, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                x=805, y=220, batch=globals.data_overlay_batch,
+                                                                group=globals.ol_fg_group)
             self.p2_overlay_clickable_label = pyglet.text.Label(self.p2_clickable_text,
                                                                 font_name='Bebas Neue',
                                                                 font_size=15,
-                                                                x=805, y=200, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                x=805, y=200, batch=globals.data_overlay_batch,
+                                                                group=globals.ol_fg_group)
             self.p2_overlay_clickable_owner_label = pyglet.text.Label(self.p2_clickable_owner_text,
                                                                       font_name='Bebas Neue',
                                                                       font_size=15,
-                                                                      x=805, y=180, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                      x=805, y=180, batch=globals.data_overlay_batch,
+                                                                      group=globals.ol_fg_group)
             self.p2_overlay_clickable_targetbool_label = pyglet.text.Label(self.p2_clickable_targetbool_text,
                                                                            font_name='Bebas Neue',
                                                                            font_size=15,
-                                                                           x=805, y=160, batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                           x=805, y=160,
+                                                                           batch=globals.data_overlay_batch,
+                                                                           group=globals.ol_fg_group)
             # anchor_x='center', anchor_y='center'
             self.p2_overlay_clickable_return_l1_label = pyglet.text.Label(self.p2_clickable_return_l1_text,
                                                                           font_name='Bebas Neue',
                                                                           font_size=15,
                                                                           x=1050, y=80, anchor_x='center',
-                                                                          batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                          batch=globals.data_overlay_batch,
+                                                                          group=globals.ol_fg_group)
             # align="center",
             self.p2_overlay_clickable_return_l2_label = pyglet.text.Label(self.p2_clickable_return_l2_text,
                                                                           font_name='Bebas Neue',
                                                                           font_size=15,
                                                                           x=1050, y=60, anchor_x='center',
-                                                                          batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                          batch=globals.data_overlay_batch,
+                                                                          group=globals.ol_fg_group)
             self.p2_overlay_clickable_return_l3_label = pyglet.text.Label(self.p2_clickable_return_l3_text,
                                                                           font_name='Bebas Neue',
                                                                           font_size=15,
                                                                           x=1050, y=40, anchor_x='center',
-                                                                          batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                          batch=globals.data_overlay_batch,
+                                                                          group=globals.ol_fg_group)
             self.p2_overlay_clickable_return_l4_label = pyglet.text.Label(self.p2_clickable_return_l4_text,
                                                                           font_name='Bebas Neue',
                                                                           font_size=12,
                                                                           x=1050, y=20, anchor_x='center',
-                                                                          batch=globals.data_overlay_batch, group=globals.ol_fg_group)
+                                                                          batch=globals.data_overlay_batch,
+                                                                          group=globals.ol_fg_group)
 
     def update(self, dt):
         # super(game_window, self).update(dt)
         # print(self.game_objects)
-        globals.p1Pos = self.player_one.get_pos()
-        self.player_two.x = globals.p2Pos[0]-20
-        self.player_two.y = globals.p2Pos[1]-20
+
+        if globals.online_multi:
+            globals.p1Pos = self.player_one.get_pos()
+            self.player_two.x = globals.p2Pos[0] - 20
+            self.player_two.y = globals.p2Pos[1] - 20
+            if "spawn" in globals.online_received:
+                spawnData = globals.online_received.pop("spawn")
+                # print(spawnData)
+                for troop_spawn in spawnData:
+                    globals.troop_objects.append(objects.str_to_class(troop_spawn.split(".")[0])
+                                                 (
+                                                 x=spawnData[troop_spawn]["locate"][0],
+                                                 y=spawnData[troop_spawn]["locate"][1],
+                                                 set_id=troop_spawn))
+                    #  Finds correct troop using class name, and spawns it with the other
+                    #  Client's ID for it
+                    globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p2_name, 2))
+                    # TODO: update to seperate online player from being a generic 2nd player
+                    # TODO: maybe convert troop and building storage from lists to dictionaries,
+                    # TODO: search using keys instead of lists?
+                    # print(troop_spawn)
+                    if "path" in spawnData:
+                        globals.troop_objects[len(globals.troop_objects) - 1].pathfind(
+                            globals.onl_r_spawns[troop_spawn]["path"])
+            if "build" in globals.online_received:
+                buildData = globals.online_received.pop("build")
+                for build_key in buildData:
+                    globals.building_objects.append(objects.str_to_class(build_key.split(".")[0])
+                                                    (x=buildData[build_key]["locate"][0],
+                                                     y=buildData[build_key]["locate"][1],
+                                                     set_id=build_key))
+                    globals.building_objects[len(globals.building_objects) - 1].set_owner((globals.p2_name, 2))
+
+            #  TODO: Building and spawning done, now create sync
+            #  TODO: Settings file?
+
         # print(globals.p2Pos)
         for obj in self.game_objects:
             obj.update(dt)
@@ -440,11 +551,11 @@ class game_window(pyglet.window.Window):
                 self.p2_tracked_owner = self.clicked_object.get_owner_id()
                 self.p2_tracked_targetbool = self.clicked_object.get_targetbool()
                 self.p2_clickable_text_temp = (str(self.tracked_type) + " - Health: " +
-                                            str(round(self.tracked_health, 1)) + " + " +
-                                            str(round(self.tracked_shield, 1)) + " Shield")
+                                               str(round(self.tracked_health, 1)) + " + " +
+                                               str(round(self.tracked_shield, 1)) + " Shield")
                 self.p2_clickable_owner_text_temp = (str(self.tracked_owner))
-                self.p2_clickable_targetbool_text_temp = ("Enabled" if self.clicked_object.get_targetbool() else "Disabled")
-
+                self.p2_clickable_targetbool_text_temp = (
+                    "Enabled" if self.clicked_object.get_targetbool() else "Disabled")
 
             if self.clicked_object.get_needs_menu():
                 if self.clicked_object.get_owner() == 1:
@@ -500,7 +611,6 @@ class game_window(pyglet.window.Window):
 
             elif self.clicked_object.get_range() <= 0:
                 self.ol_range.anchor_x = 10000
-
 
         if self.clicked_object is None:
             globals.clickable = None
@@ -591,7 +701,7 @@ class game_window(pyglet.window.Window):
 
         elif symbol == key.SLASH:
             if modifiers & key.MOD_SHIFT:
-                self.show_grid = not(self.show_grid)
+                self.show_grid = not (self.show_grid)
                 if self.show_grid:
                     for i in objects.grid_set:
                         i.opacity = 255
@@ -599,11 +709,11 @@ class game_window(pyglet.window.Window):
                     for i in objects.grid_set:
                         i.opacity = 0
             else:
-                self.show_data_overlay = not(self.show_data_overlay)
+                self.show_data_overlay = not (self.show_data_overlay)
             # Control.handleraltered = False
 
         elif symbol == key.HASH:
-            self.show_research_overlay = not(self.show_research_overlay)
+            self.show_research_overlay = not (self.show_research_overlay)
 
         elif symbol == key.BACKSLASH:
             if self.clicked_object is not None:
@@ -612,7 +722,7 @@ class game_window(pyglet.window.Window):
             self.input_text = self.input_text[:-1]
 
         if symbol == key.LEFT:  # TODO: choose whether the menu function buttons should be the same
-                                # TODO: or different for each player (only one player's building can be accessed at once)
+            # TODO: or different for each player (only one player's building can be accessed at once)
             if self.clicked_object is not None:
                 if self.clicked_object.get_needs_menu():
                     self.clicked_object.key_left_func()
@@ -714,7 +824,9 @@ class game_window(pyglet.window.Window):
     def dataPush(self):
         """Pushes relavent data into globals for later usage as a message."""
         playerPos = self.player_one.get_pos()
-        return {"position": [playerPos[0], playerPos[1]], "resources": [globals.player1_lv1_res, globals.player1_lv2_res, globals.player1_lv3_res], "generation": [globals.player1_lv1_gen, globals.player1_lv2_gen, globals.player1_lv3_gen]}
+        return {"position": [playerPos[0], playerPos[1]],
+                "resources": [globals.player1_lv1_res, globals.player1_lv2_res, globals.player1_lv3_res],
+                "generation": [globals.player1_lv1_gen, globals.player1_lv2_gen, globals.player1_lv3_gen]}
 
     def serveData(self, dt=None):
         print("serving")
@@ -731,7 +843,6 @@ class game_window(pyglet.window.Window):
 
     def tiles_map(self, resx=globals.screenresx, resy=globals.screenresy, size=20):
         grad = src.pixel_approx.tileize(src.pixel_approx.get_noise(), size)
-
 
         ylayers = resy // size
         # print(ylayers)
@@ -777,25 +888,28 @@ class game_window(pyglet.window.Window):
                     tile_colour = mountain
                     tilemod = 10
 
-                current_tile = objects.TileBG(x=size * j, y=size * i, width=size, height=size, color=tile_colour, batch=globals.game_batch, group=globals.map_group)  # batch=tilebatch
+                current_tile = objects.TileBG(x=size * j, y=size * i, width=size, height=size, color=tile_colour,
+                                              batch=globals.game_batch, group=globals.map_group)  # batch=tilebatch
 
                 globals.astar_map[ylayers - i - 1].append(tilemod)
                 if tilemod < 0:
                     current_tile.modifier = 0.0001
                     current_tile.make_barrier()
                 else:
-                    current_tile.modifier = 1/tilemod
+                    current_tile.modifier = 1 / tilemod
 
                 tiles[i - 1].append(current_tile)
 
         for i in range(resx // size):
             objects.grid_set.append((
-                pyglet.shapes.Line(xcoord := i*20, 0, xcoord, resy, 1, (35, 35, 35), batch=globals.game_batch, group=globals.grid_group)
+                pyglet.shapes.Line(xcoord := i * 20, 0, xcoord, resy, 1, (35, 35, 35), batch=globals.game_batch,
+                                   group=globals.grid_group)
             ))
 
         for i in range(resy // size):
             objects.grid_set.append((
-                pyglet.shapes.Line(0, ycoord := i*20, resx, ycoord, 1, (35, 35, 35), batch=globals.game_batch, group=globals.grid_group)
+                pyglet.shapes.Line(0, ycoord := i * 20, resx, ycoord, 1, (35, 35, 35), batch=globals.game_batch,
+                                   group=globals.grid_group)
             ))
 
         globals.astar_matrix = Grid(matrix=globals.astar_map)

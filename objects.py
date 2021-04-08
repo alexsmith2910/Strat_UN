@@ -1,3 +1,4 @@
+import sys
 import os
 import math
 import pyglet
@@ -5,6 +6,7 @@ from pyglet.window import key
 import secrets  # Used for better randomness
 import random  # Used to save time complexity for common actions
 import globals
+from uuid import uuid4
 
 from src.animations.animation import drill_frames
 
@@ -70,6 +72,9 @@ sniper_image.anchor_y = 10
 # print(drill_frames)
 
 drill_ani = pyglet.image.Animation.from_image_sequence(drill_frames, duration=0.00085, loop=True)
+
+def str_to_class(name):
+    return getattr(sys.modules[__name__], name)
 
 class TileError(Exception):
     """Attributes:
@@ -236,9 +241,10 @@ class TileBG(pyglet.shapes.Rectangle):
         return self.y
 
 class Building(TileObject):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, set_id=None, *args, **kwargs):
         super().__init__(img=building_placeholder_image, *args, **kwargs)
         self.class_type = "Building"
+        self.__id = set_id
         self.batch = globals.game_batch
         self.group = globals.s_building_group
         self.max_health = 1000
@@ -270,8 +276,20 @@ class Building(TileObject):
         self.s_bar = pyglet.shapes.Rectangle((self.x - 10), (self.y + 20), 20, 2, globals.s_bar_colour, batch=globals.hud_batch)
         self.s_bar.opacity = 0
         self.h_bar.opacity = 0
-
         self.dot_damage = 0
+
+        if self.__id is None:
+            self._gen_id()
+
+    def _gen_id(self):
+        self.__id = type(self).__name__ + "." + str(uuid4())
+        # When a child is made it will take the child's class name
+
+    def get_id(self):
+        return self.__id
+
+    def set_id(self, new_id):
+        self.__id = new_id
 
     def key_left_func(self):
         pass
@@ -384,9 +402,10 @@ class Building(TileObject):
 class Troop(TileObject):
     overlay_name = "Unedited troop"
     training_time = 5
-    def __init__(self, *args, **kwargs):
+    def __init__(self, set_id=None, *args, **kwargs):
         super().__init__(img=troop_placeholder_image, *args, **kwargs)
 
+        self.__id = set_id
         self.batch = globals.game_batch
         self.group = globals.s_troop_group
 
@@ -447,6 +466,19 @@ class Troop(TileObject):
         self.dot_strength = None
 
         self.dot_damage = 0
+
+        if self.__id is None:
+            self._gen_id()
+
+    def _gen_id(self):
+        self.__id = type(self).__name__ + "." + str(uuid4())
+        # When a child is made it will take the child's class name
+
+    def get_id(self):
+        return self.__id
+
+    def set_id(self, new_id):
+        self.__id = new_id
 
     def fire(self):
         self.targeted.hit(self.damage)
@@ -1395,8 +1427,21 @@ class Barracks(Building):
             while move_x == self.x and move_y == self.y and move_x <= globals.screenresx and move_y <= globals.screenresy:
                 move_x = random.randint(self.x-100, self.x+100)
                 move_y = random.randint(self.y-100, self.y+100)
+                # TODO: check if tile to move to is water and rescan if so
             globals.troop_objects[(len(globals.troop_objects) - 1)] \
                 .pathfind((move_x, move_y))
+            if globals.online_multi:
+                troop_id = globals.troop_objects[(len(globals.troop_objects) - 1)].get_id()
+                print(troop_id)
+                if "spawn" not in globals.online_sending:
+                    globals.online_sending["spawn"] = {}
+                    #  Save bandwidth when possible on messages without spawns
+                globals.online_sending["spawn"][troop_id] = {
+                    "locate": [self.x, self.y],
+                    "path": [move_x, move_y]
+                }
+                #  Include movement as a separate key in case of
+                #  Console-command implementation
             #TODO: make troop move away from the building to prevent stacking
             del self.queue[0]
             if self.queue != []:
@@ -1828,9 +1873,18 @@ class Player(TileObject):
                 globals.player1_lv3_res -= (globals.building_costs[self.select_text])[2]
 
                 globals.building_objects.append(self.selection(x=self.x, y=self.y))
-                print(globals.building_objects)
+                # print(globals.building_objects)
                 globals.building_objects[len(globals.building_objects)-1].set_owner(self.get_id())
-            #building_objects[len(player_list) - 1].color = (0, 0, 255) # NOTE: color function acts as a 'tint' added to sprites
+                if globals.online_multi:
+                    if "build" not in globals.online_sending:
+                        globals.online_sending["build"] = {}
+                    globals.online_sending["build"][globals.building_objects[len(globals.building_objects)-1].get_id()] = \
+                        {
+                            "locate": [self.x, self.y]
+                        }
+
+            #  building_objects[len(player_list) - 1].color = (0, 0, 255)
+            #  NOTE: color function acts as a 'tint' added to sprites
             self.bcounter += dt
 
         if self.bcounter > 0:

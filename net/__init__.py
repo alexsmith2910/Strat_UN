@@ -1,2 +1,2 @@
-from . import testclient
+from . import client
 from .netscript import dicttomessage

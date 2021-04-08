@@ -18,6 +18,9 @@ def dicttomessage(dictionary):
 # diction = {"move": "down-left", "building": ["drill", 12]}
 # print(dicttomessage(diction))
 
+def net_id_gen():
+    pass  # Create incase UUID becomes too likely to duplicate IDs
+
 def netlistener():
     while True:
         # now our endpoint knows about the OTHER endpoint.
