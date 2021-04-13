@@ -57,7 +57,7 @@ class ClientThread(threading.Thread):
                     header = int(bytefixstrip(header))
                     # print(int(str(header)))
                     # print("Message header shows {0} bytes of data.".format(str(header)))
-                    if header != b"0000":
+                    if header > 0:
                         msg = self.s.recv(header)
                         jsonned = json.loads(msg)
 
