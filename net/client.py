@@ -1,4 +1,6 @@
 import socket
+import select
+
 import json
 import time
 import globals
@@ -23,12 +25,20 @@ class ClientThread(threading.Thread):
         self.name = "Client thread"
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.bind(("0.0.0.0", 5469))
-        while True:
+        connected = False
+        while not connected:
             try:
-                self.conn, self.address = self.s.accept()
-                print(self.address)
-            except:
-                pass
+                self.s.send(b"0000")
+                connected = True
+                # This is trying to fix OSError 10060, which states no response is made
+                # So sending an empty header upon initialization should get the server on the other end as it comes up.
+                # (The server does seem to become alive even when this is in a while loop as it causes 10060)
+            except Exception as e:
+                print("Client init: " + str(e))
+                #  Possible solution above is known to cause OSError 10057 as it constantly tries to send
+                #  Before the server is opened. Theory for test is that as the server for the other side
+                #  Receives this, the socket will be connected and messages can be sent as normal
+
 
     def run(self):
         print("Starting client...")
@@ -41,13 +51,15 @@ class ClientThread(threading.Thread):
                 # s.connect((socket.gethostname(), 5469))
                 # print(str(socket.gethostname()))
                 # print(str(type(socket.gethostname())))
-                header = self.conn.recv(4)
+
+                header = self.s.recv(4)  # Original cause of 10057
                 if header != b'':
                     header = int(bytefixstrip(header))
                     # print(int(str(header)))
                     # print("Message header shows {0} bytes of data.".format(str(header)))
-                    msg = self.conn.recv(header)
-                    jsonned = json.loads(msg)
+                    if header != b"0000":
+                        msg = self.s.recv(header)
+                        jsonned = json.loads(msg)
 
                     globals.p2Pos = jsonned["position"]
                     if "spawn" in jsonned:
@@ -67,7 +79,7 @@ class ClientThread(threading.Thread):
                                 globals.recievedName = True
             except Exception as e:
                 # raise e
-                print("client: " + str(e))
+                print("Client: " + str(e))
 
     def kill(self):
         self.s.close()

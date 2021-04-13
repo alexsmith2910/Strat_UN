@@ -3,6 +3,7 @@ from pyglet.graphics import *
 
 import secrets
 import socket
+import select
 
 from pathfinding.core.diagonal_movement import DiagonalMovement
 from pathfinding.core.grid import Grid
@@ -39,8 +40,12 @@ class serverThread(threading.Thread):  # threading.Thread
         if globals.local_connect:  # Used when localhost is being used, mainly for testing
             self.s.bind((globals.recipient, 5469))
         else:  # Used when an external IP is supplied
-            # self.s.connect((globals.recipient, 5469))
             self.s.connect((globals.recipient, 5469))
+            #  Causes error that crashes strat, being OSError 10060
+            #  Essentially a timeout from there being no response to its connection
+            #  Since the Client can print its errors before the program crashes,
+            #  It seems that the connection is possible, and *not* the server locking the client
+            #  (i.e it stopping the client threat so it can't respond)
 
             # _, _ = self.s.accept()
             #  External IP usage results in error, check if port forwarding is needed
