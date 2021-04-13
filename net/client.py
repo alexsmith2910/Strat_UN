@@ -24,26 +24,39 @@ class ClientThread(threading.Thread):
         self.daemon = True
         self.name = "Client thread"
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.s.bind(("0.0.0.0", 5469))
-        connected = False
-        while not connected:
-            try:
-                self.s.send(b"0000")
-                connected = True
-                # This is trying to fix OSError 10060, which states no response is made
-                # So sending an empty header upon initialization should get the server on the other end as it comes up.
-                # (The server does seem to become alive even when this is in a while loop as it causes 10060)
-            except Exception as e:
-                print("Client init: " + str(e))
-                #  Possible solution above is known to cause OSError 10057 as it constantly tries to send
-                #  Before the server is opened. Theory for test is that as the server for the other side
-                #  Receives this, the socket will be connected and messages can be sent as normal
-
+        self.s.bind(("", 5469))
+        self.connected = False
+        if not self.connected and globals.checkIfFirstAcceptance():
+            while not self.connected:
+                try:
+                    self.s.listen(5)
+                    connectHeader = self.s.recv(4)
+                    if int(bytefixstrip(connectHeader)) == 0:
+                        self.connected = True
+                except Exception as e:
+                    print("Client first connect: " + str(e))
 
     def run(self):
         print("Starting client...")
         while True:
             try:
+                if not self.connected and not globals.checkIfFirstAcceptance():
+                    while not self.connected:
+                        try:
+                            self.s.listen(5)
+                            connectHeader = self.s.recv(4)
+                            if int(bytefixstrip(connectHeader)) == 0:
+                                self.connected = True
+                        except Exception as e:
+                            print("Client second connect: " + str(e))
+                            # This is trying to fix OSError 10060, which states no response is made
+                            # So sending an empty header upon initialization should get the server on the other end as it comes up.
+                            # (The server does seem to become alive even when this is in a while loop as it causes 10060)
+                        # except Exception as e:
+                        #     print("Client init: " + str(e))
+                            #  Possible solution above is known to cause OSError 10057 as it constantly tries to send
+                            #  Before the server is opened. Theory for test is that as the server for the other side
+                            #  Receives this, the socket will be connected and messages can be sent as normal
                 # time.sleep(0.05)
                 # while True:
                 #     clientConnection = s.accept()

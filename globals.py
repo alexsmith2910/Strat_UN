@@ -4,13 +4,20 @@ from pathfinding.core.grid import Grid
 from pathfinding.finder.bi_a_star import BiAStarFinder
 from socket import gethostname
 import configparser
+import sys
 
 settings = configparser.ConfigParser()
 settings.read("settings.ini")
 
 # print(settings["ONLINE"]["address"] == "localhost")
 
-if settings["ONLINE"]["address"] == "localhost":
+def checkIfFirstAcceptance():
+    if settings.getboolean("ONLINE", "firstconnect"):
+        return True
+    else:
+        return False
+
+if rawaddr := (settings["ONLINE"]["address"]) == "localhost":
     recipient = gethostname()
     local_connect = True
 else:
