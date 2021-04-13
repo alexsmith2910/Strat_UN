@@ -8,10 +8,15 @@ import configparser
 settings = configparser.ConfigParser()
 settings.read("settings.ini")
 
+# print(settings["ONLINE"]["address"] == "localhost")
+
 if settings["ONLINE"]["address"] == "localhost":
     recipient = gethostname()
+    local_connect = True
 else:
     recipient = settings["ONLINE"]["address"]
+    local_connect = False
+# print(recipient)
 
 finder = BiAStarFinder(diagonal_movement=DiagonalMovement.always)
 
@@ -21,10 +26,10 @@ offline_multi = False
 # Online multiplayer control and data storage
 online_multi = True
 
+recievedName = False
+
 online_sending = {}
 online_received = {}
-
-onl_r_spawns = {}
 
 # NOTE: currently being used since my keyboard seems to treat the numpad as OEM.
 # set this to True if your numpad does nothing in 2 player mode (i.e not selecting the different buildings for P2)
@@ -66,7 +71,7 @@ p2_color = (255, 100, 100)
 p3_color = (160, 255, 100)
 p4_color = (255, 255, 100)
 
-p1_name = "Zestyy"
+p1_name = settings["PLAYERDATA"]["username"]
 p2_name = "The creep"
 p3_name = "Smuuvi"
 p4_name = "AJS"

@@ -538,12 +538,16 @@ class Troop(TileObject):
                     temp = globals.screenresy - ((j * 20) + 10)
 
                 self.cpath[counter].append(int(temp))
-        # del self.cpath[0]
-        # for i in self.cpath:
-        #     i[1] += 20
         # print(self.cpath) # D
         # print(globals.astar_matrix.grid_str(path=path, start=start, end=end)) # D
-        if self.cpath != []:
+        if self.cpath:
+            if "move" not in globals.online_sending:
+                globals.online_sending["move"] = {}
+                #  Save bandwidth when possible on messages without spawns
+            globals.online_sending["move"][self.get_id()] = {
+                "path": self.cpath
+            }
+            print("pathed")
             self.ctarget = self.cpath[0]
             for i in globals.bg_tiles:
                 for j in i:
@@ -553,7 +557,7 @@ class Troop(TileObject):
                         break
         globals.astar_matrix.cleanup()
         last_coord = self.cpath[len(self.cpath)-1]
-        print(last_coord)
+        # print(last_coord)
         for i in globals.bg_tiles:  # TODO: (low priority) improve efficiency of algorithm
             for j in i:             # TODO: (find tile directly through coords?)
                 if j.x+10 == last_coord[0] and j.y+10 == last_coord[1]:
@@ -1432,7 +1436,7 @@ class Barracks(Building):
                 .pathfind((move_x, move_y))
             if globals.online_multi:
                 troop_id = globals.troop_objects[(len(globals.troop_objects) - 1)].get_id()
-                print(troop_id)
+                # print(troop_id)
                 if "spawn" not in globals.online_sending:
                     globals.online_sending["spawn"] = {}
                     #  Save bandwidth when possible on messages without spawns
@@ -1444,7 +1448,7 @@ class Barracks(Building):
                 #  Console-command implementation
             #TODO: make troop move away from the building to prevent stacking
             del self.queue[0]
-            if self.queue != []:
+            if self.queue:
                 self.train_time = 0.000001
             else:
                 self.train_time = 0
@@ -1832,6 +1836,7 @@ class Player(TileObject):
         if globals.key_handler[self.call_key] and self.call_counter == 0:
             if globals.clickable is not None and globals.clickable.get_owner() == self.num and globals.clickable.class_type == "Troop":
                 globals.clickable.pathfind((self.x, self.y))
+                self.call_counter += dt
 
             # for i in globals.troop_objects:
             #     if i.get_owner() == 1:
@@ -1841,26 +1846,26 @@ class Player(TileObject):
         if globals.key_handler[self.up_key]:
             if self.scounter == 0:
                 self.y += self.pixels
-            if self.scounter == 0:
-                self.scounter += 1 * dt
+            # if self.scounter == 0:
+                self.scounter += dt
 
         if globals.key_handler[self.left_key]:
             if self.scounter == 0:
                 self.x -= self.pixels
-            if self.scounter == 0:
-                self.scounter += 1 * dt
+            # if self.scounter == 0:
+                self.scounter += dt
 
         if globals.key_handler[self.down_key]:
             if self.scounter == 0:
                 self.y -= self.pixels
-            if self.scounter == 0:
-                self.scounter += 1 * dt
+            # if self.scounter == 0:
+                self.scounter += dt
 
         if globals.key_handler[self.right_key]:
             if self.scounter == 0:
                 self.x += self.pixels
-            if self.scounter == 0:
-                self.scounter += 1 * dt
+            # if self.scounter == 0:
+                self.scounter += dt
 
         if globals.key_handler[self.build_key] and self.bcounter == 0:  # create some sort of build function
             costs = globals.building_costs[self.select_text]
@@ -1902,8 +1907,8 @@ class Player(TileObject):
             self.scounter = 0 if self.scounter >= 0.25 else self.scounter
         if self.bcounter >= 3:
             self.bcounter = 0 if self.bcounter >= 3 else self.bcounter
-        if self.call_counter >= 5:
-            self.call_counter = 0 if self.call_counter >= 5 else self.call_counter
+        if self.call_counter >= 2:
+            self.call_counter = 0 if self.call_counter >= 2 else self.call_counter
         if self.ol_counter >= 1:
             self.ol_counter = 0 if self.ol_ounter >= 5 else self.ol_counter
 

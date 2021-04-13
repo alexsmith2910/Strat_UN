@@ -11,7 +11,7 @@ script_loc = script_loc[:-4]
 def get_noise():
     onlyfiles = [f for f in listdir(script_loc + "\\generated") if isfile(join(script_loc + "\\generated", f))]
     #print(onlyfiles)
-    chosen = script_loc + "\\generated\\" + str(choice(onlyfiles))
+    chosen = script_loc + "\\generated\\" + str(onlyfiles[69])
     img = Image.open(chosen)
     # img = Image.open("c:/users/sebas/downloads/KmFDqavv_o.jpg") # Manual override
     return img

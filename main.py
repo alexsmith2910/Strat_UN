@@ -13,7 +13,8 @@ finder = BiAStarFinder(diagonal_movement=DiagonalMovement.always)
 import objects
 import globals
 import src
-import gui.research_elements.elements as research_elements
+# import gui.research_elements.elements as research_elements
+import gui
 import threading
 import net
 
@@ -35,18 +36,31 @@ class serverThread(threading.Thread):  # threading.Thread
         #     self.s.bind((socket.gethostname(), 5469))
         # else:
         #     print(globals.recipient)
-        if globals.recipient == "localhost":
+        if globals.local_connect:  # Used when localhost is being used, mainly for testing
             self.s.bind((globals.recipient, 5469))
-        else:
+        else:  # Used when an external IP is supplied
+            # self.s.connect((globals.recipient, 5469))
             self.s.connect((globals.recipient, 5469))
+
+            # _, _ = self.s.accept()
             #  External IP usage results in error, check if port forwarding is needed
 
     def dataPush(self):
         """Pushes relavent data into globals for later usage as a message."""
         playerPos = globals.p1Pos
-        data = {"type": "", "position": [playerPos[0], playerPos[1]],
+        data = {"position": [playerPos[0], playerPos[1]],
                 "resources": [globals.player1_lv1_res, globals.player1_lv2_res, globals.player1_lv3_res],
                 "generation": [globals.player1_lv1_gen, globals.player1_lv2_gen, globals.player1_lv3_gen]}
+
+        # for keys in globals.online_sending:
+        #     data[keys] = globals.online_sending.pop(keys)
+
+        #  Syncing usernames
+        if "username" in globals.online_sending:
+            data["username"] = globals.online_sending.pop("username")
+        if "confirm_u" in globals.online_sending:
+            data["confirm_u"] = globals.online_sending.pop("confirm_u")
+
         if "spawn" in globals.online_sending:
             # print("found spawn tag: {0}".format(str(globals.online_sending)))
             data["spawn"] = globals.online_sending.pop("spawn")
@@ -54,6 +68,9 @@ class serverThread(threading.Thread):  # threading.Thread
         if "build" in globals.online_sending:
             # print("found spawn tag: {0}".format(str(globals.online_sending)))
             data["build"] = globals.online_sending.pop("build")
+
+        if "move" in globals.online_sending:
+            data["move"] = globals.online_sending.pop("move")
 
         # globals.onl_sending = {}  # When all keys are popped this shouldn't be necessary
         return data
@@ -103,23 +120,31 @@ class game_window(pyglet.window.Window):
             self.player_two = objects.Player(x=650, y=650)
             self.player_two.set_id(globals.p2_name, 2)
             self.game_objects.append(self.player_two)
+        #  Testing code that spawns 4 dev tanks in
+
         # globals.troop_objects.append(objects.Dev_Tank(x=globals.building_objects[0].get_x()+100, y=globals.building_objects[0].get_y()+100))
-        globals.troop_objects.append(objects.Dev_Tank(x=610, y=610))
-        globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p1_name, 1))
-        globals.troop_objects[len(globals.troop_objects) - 1].health = 500
-        globals.troop_objects.append(objects.Dev_Tank(x=710, y=410))
-        globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p2_name, 2))
-        print(globals.troop_objects[len(globals.troop_objects) - 1].get_id())
+        # globals.troop_objects.append(objects.Dev_Tank(x=610, y=610))
+        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p1_name, 1))
+        # globals.troop_objects[len(globals.troop_objects) - 1].health = 500
+        # globals.troop_objects.append(objects.Dev_Tank(x=710, y=410))
+        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p2_name, 2))
+        # print(globals.troop_objects[len(globals.troop_objects) - 1].get_id())
         # globals.troop_objects.append(objects.Dev_Tank(x=1010, y=810))
         # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p3_name, 3))
         # globals.troop_objects.append(objects.Dev_Tank(x=110, y=510))
         # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p4_name, 4))
-        self.HQ_spawn()
-        print(globals.building_objects[0].get_id())
+
+        # self.HQ_spawn()
+        globals.building_objects.append(objects.HQ(x=110, y=50))
+        globals.building_objects.append(objects.HQ(x=1430, y=510))
+        globals.building_objects[len(globals.building_objects) - 2].set_owner((globals.p1_name, 1))
+        globals.building_objects[len(globals.building_objects) - 1].set_owner((globals.p2_name, 2))
+        # print(globals.building_objects[0].get_id())
         self.push_handlers(globals.key_handler)
         pyglet.clock.schedule_interval(self.update, 1 / 120.0)
-        self.winThread = serverThread()
         self.client = net.client.ClientThread()
+        self.client.start()  # TODO: test if starting the client first allows for the connection to be heard, to fix the issue.
+        self.winThread = serverThread()
         self.fps_display = pyglet.window.FPSDisplay(self)
         self.input_text = ''
         self.firstt = True  # this serves to avoid the first 't' used to activate the typing,
@@ -131,9 +156,9 @@ class game_window(pyglet.window.Window):
         self.show_data_overlay = False
         self.show_research_overlay = False
         self.clicked_object = None
-        self.winThread.start()
-        self.client.start()
-        pyglet.clock.schedule_interval(self.winThread.run, 0.1)  # TODO: move server to thread to prevent game stoppages
+        self.winThread.start()  # TODO: if not, test if the failure comes from it getting to the server and being forced to stay on it
+        # self.client.start()
+        pyglet.clock.schedule_interval(self.winThread.run, 0.05)
 
     def HQ_spawn(self, players=2, distance=120):
         cur_player = 0
@@ -280,8 +305,8 @@ class game_window(pyglet.window.Window):
                                                     font_size=15,
                                                     x=720, y=975, batch=globals.research_overlay_batch,
                                                     group=globals.ol_fg_group)
-            self.roverlay_tree = research_elements.Branch(direction="NW")
-            self.research_items.append(research_elements.ResearchSlot(700, 700,
+            self.roverlay_tree = gui.research_elements.Branch(direction="NW")
+            self.research_items.append(gui.research_elements.ResearchSlot(700, 700,
                                                                       spritesrc=pyglet.image.load(
                                                                           "src/sprite/Basic-infantry.png"),
                                                                       heldclass=objects.Basic_infantry))
@@ -485,10 +510,12 @@ class game_window(pyglet.window.Window):
         # super(game_window, self).update(dt)
         # print(self.game_objects)
 
+        #  Code that uses data received online to
+        #  Appropriately manipulate the game
         if globals.online_multi:
             globals.p1Pos = self.player_one.get_pos()
-            self.player_two.x = globals.p2Pos[0] - 20
-            self.player_two.y = globals.p2Pos[1] - 20
+            self.player_two.x = globals.p2Pos[0]
+            self.player_two.y = globals.p2Pos[1]
             if "spawn" in globals.online_received:
                 spawnData = globals.online_received.pop("spawn")
                 # print(spawnData)
@@ -516,6 +543,14 @@ class game_window(pyglet.window.Window):
                                                      y=buildData[build_key]["locate"][1],
                                                      set_id=build_key))
                     globals.building_objects[len(globals.building_objects) - 1].set_owner((globals.p2_name, 2))
+            if "move" in globals.online_received:
+                moveData = globals.online_received.pop("move")
+                for move_event in moveData:
+                    for i in globals.troop_objects:
+                        if move_event == i.get_id():
+                            i.ctarget = moveData[move_event][0]
+                            i.cpath = moveData[move_event][1:]
+                            break
 
             #  TODO: Building and spawning done, now create sync
             #  TODO: Settings file?
