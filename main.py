@@ -41,6 +41,7 @@ class serverThread(threading.Thread):  # threading.Thread
             self.s.bind((globals.recipient, 5469))
         else:  # Used when an external IP is supplied
             self.s.connect((globals.recipient, 5469))
+            self.s.send(b"0000")
             #  Causes error that crashes strat, being OSError 10060
             #  Essentially a timeout from there being no response to its connection
             #  Since the Client can print its errors before the program crashes,
@@ -83,13 +84,17 @@ class serverThread(threading.Thread):  # threading.Thread
     def run(self, dt=None):
         # print("serving")
         try:
-            self.s.listen(5)
-            # s.settimeout(0.5)
-            # s.setblocking(0)
-
+            # self.s.listen(5)
+            #  Listen attempts to make a new connection with a client, so this should not be needed,
+            #  And will error as a connetion should already exist
+            # # s.settimeout(0.5)
+            # # s.setblocking(0)
+            #
             data = self.dataPush()
-            clientsocket, address = self.s.accept()
-            clientsocket.send(net.dicttomessage(data))
+            # clientsocket, address = self.s.accept()
+            #  self.s by this point is connected to the other player, so we do not need a new one through accept
+            # clientsocket.send(net.dicttomessage(data))
+            self.s.send(net.dicttomessage(data))
         except socket.timeout:
             print("Timed out")
         except Exception as e:
@@ -518,6 +523,11 @@ class game_window(pyglet.window.Window):
         #  Code that uses data received online to
         #  Appropriately manipulate the game
         if globals.online_multi:
+
+            globals.sync_timer += dt
+            if globals.sync_timer >= globals.sync_time:
+                globals.sync_timer = 0.0
+
             globals.p1Pos = self.player_one.get_pos()
             self.player_two.x = globals.p2Pos[0]
             self.player_two.y = globals.p2Pos[1]
@@ -553,8 +563,8 @@ class game_window(pyglet.window.Window):
                 for move_event in moveData:
                     for i in globals.troop_objects:
                         if move_event == i.get_id():
-                            i.ctarget = moveData[move_event][0]
-                            i.cpath = moveData[move_event][1:]
+                            i.ctarget = moveData[move_event]["path"][0]
+                            i.cpath = moveData[move_event]["path"][1:]
                             break
 
             #  TODO: Building and spawning done, now create sync

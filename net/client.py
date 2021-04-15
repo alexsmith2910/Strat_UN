@@ -29,7 +29,13 @@ class ClientThread(threading.Thread):
         if not self.connected and globals.checkIfFirstAcceptance():
             while not self.connected:
                 try:
-                    self.s.listen(5)
+                    # pass
+                    self.s.listen(5)  # Listening completes the connection and starts the game for the person who does NOT listen first
+                    connection, addr = self.s.accept()
+                    print(addr)
+                    self.s = connection
+                    #  Search for and accept the new connection, which will be used to recieve data.
+                    #  One connection object for each client
                     connectHeader = self.s.recv(4)
                     if int(bytefixstrip(connectHeader)) == 0:
                         self.connected = True

@@ -4,18 +4,20 @@ from pathfinding.core.grid import Grid
 from pathfinding.finder.bi_a_star import BiAStarFinder
 from socket import gethostname
 import configparser
-import sys
+import log
+# import socket
+# import sys
 
 settings = configparser.ConfigParser()
 settings.read("settings.ini")
 
 # print(settings["ONLINE"]["address"] == "localhost")
+# print(socket.gethostbyname(socket.gethostname()))
+# print(socket.gethostbyname(socket.getfqdn()))
+# sys.exit()
 
 def checkIfFirstAcceptance():
-    if settings.getboolean("ONLINE", "firstconnect"):
-        return True
-    else:
-        return False
+    return settings.getboolean("ONLINE", "firstconnect")
 
 if rawaddr := (settings["ONLINE"]["address"]) == "localhost":
     recipient = gethostname()
@@ -27,11 +29,22 @@ else:
 
 finder = BiAStarFinder(diagonal_movement=DiagonalMovement.always)
 
-#use to comtrol offline multiplayer
+#use to control offline multiplayer
 offline_multi = False
 
 # Online multiplayer control and data storage
-online_multi = True
+online_multi = settings.getboolean("ONLINE", "online_multiplayer")
+sync_timer = 0.0
+
+try:
+    sync_time = int(settings["ONLINE"]["synctime"])
+except ValueError:
+    sync_time = 20
+except KeyError as e:
+    log.error_write(description="Could not find sync time option in settings file", error=e)
+except Exception as e:
+    log.error_write(description="Attempted to load sync time", error=e)
+# TODO; Implement sync
 
 recievedName = False
 
