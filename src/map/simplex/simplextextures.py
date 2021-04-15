@@ -23,21 +23,23 @@ import math
 
 import src.map.simplex.simplexnoise
 
+
 def marble_noise_2d(octaves, persistence, scale, x, y):
     """2D Marble Noise on the x-axis."""
     return math.cos(float(x) * scale + src.map.simplex.simplexnoise.octave_noise_2d(
-            octaves, persistence, float(scale) / 3.0, x, y)
+        octaves, persistence, float(scale) / 3.0, x, y)
                     );
+
 
 def marble_noise_3d(octaves, persistence, scale, x, y, z):
     """3D Marble Noise on the x-axis."""
     return math.cos(float(x) * scale + src.map.simplex.simplexnoise.octave_noise_3d(
-            octaves, persistence, float(scale) / 3.0, x, y, z)
+        octaves, persistence, float(scale) / 3.0, x, y, z)
                     );
+
 
 def marble_noise_4d(octaves, persistence, scale, x, y, z, w):
     """4D Marble Noise on the x-axis."""
     return math.cos(float(x) * scale + src.map.simplex.simplexnoise.octave_noise_4d(
-            octaves, persistence, float(scale) / 3.0, x, y, z, w)
+        octaves, persistence, float(scale) / 3.0, x, y, z, w)
                     );
-

@@ -12,8 +12,9 @@ import threading
 def bytefixstrip(inp):
     inp = str(inp)
     output = inp[2:]
-    output = output[:len(output)-1]
+    output = output[:len(output) - 1]
     return output
+
 
 count = 0
 
@@ -30,11 +31,13 @@ class ClientThread(threading.Thread):
             while not self.connected:
                 try:
                     # pass
-                    self.s.listen(5)  # Listening completes the connection and starts the game for the person who does NOT listen first
+                    self.s.listen(5)
+                    #  Listening completes the connection and starts the game for the person who does NOT listen first
                     connection, addr = self.s.accept()
-                    print(addr)
+                    # print(addr)
+                    # TODO: maybe log address of connections? or log sent data that is unusual?
                     self.s = connection
-                    #  Search for and accept the new connection, which will be used to recieve data.
+                    #  Search for and accept the new connection, which will be used to receive data.
                     #  One connection object for each client
                     connectHeader = self.s.recv(4)
                     if int(bytefixstrip(connectHeader)) == 0:
@@ -60,9 +63,9 @@ class ClientThread(threading.Thread):
                             # (The server does seem to become alive even when this is in a while loop as it causes 10060)
                         # except Exception as e:
                         #     print("Client init: " + str(e))
-                            #  Possible solution above is known to cause OSError 10057 as it constantly tries to send
-                            #  Before the server is opened. Theory for test is that as the server for the other side
-                            #  Receives this, the socket will be connected and messages can be sent as normal
+                        #  Possible solution above is known to cause OSError 10057 as it constantly tries to send
+                        #  Before the server is opened. Theory for test is that as the server for the other side
+                        #  Receives this, the socket will be connected and messages can be sent as normal
                 # time.sleep(0.05)
                 # while True:
                 #     clientConnection = s.accept()
@@ -103,7 +106,6 @@ class ClientThread(threading.Thread):
     def kill(self):
         self.s.close()
         del self
-
 
 # if __name__ == "__main__":
 #     pass

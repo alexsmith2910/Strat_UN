@@ -10,10 +10,12 @@ import threading
 def bytefixstrip(inp):
     inp = str(inp)
     output = inp[2:]
-    output = output[:len(output)-1]
+    output = output[:len(output) - 1]
     return output
 
+
 count = 0
+
 
 class ClientThread(threading.Thread):
     def __init__(self):

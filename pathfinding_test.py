@@ -2,8 +2,10 @@ import secrets
 from pathfinding.core.diagonal_movement import DiagonalMovement
 from pathfinding.core.grid import Grid
 from pathfinding.finder.a_star import AStarFinder
+
 for i in range(7):
     print(i)
+
 
 def tiles_map(x, y):
     tiles = []
@@ -18,15 +20,17 @@ def tiles_map(x, y):
                 tiles[i - 1].append(1)
             else:
                 tiles[i - 1].append(-1)
-    #for i in range(len(tiles)):
+    # for i in range(len(tiles)):
 
     return tiles
+
+
 print(map := tiles_map(30, 20))
 
 matrix = [
-  [1, 1, 1],
-  [1, 0, 1],
-  [1, 1, 1]
+    [1, 1, 1],
+    [1, 0, 1],
+    [1, 1, 1]
 ]
 grid = Grid(matrix=map)
 

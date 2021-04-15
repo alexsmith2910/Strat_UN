@@ -6,10 +6,12 @@ import src.map.noise.prereq
 
 random.seed(a=os.urandom(1024))
 
+
 def twod_vectorize():
     angle = random.randint(0, 360)
     return [(sin(angle)), (cos(angle))]
     # return [(random.randrange(-100, 101, 1)/100), (random.randrange(-100, 101, 1)/100)]
+
 
 def vector_grid(x, y):
     grid = []
@@ -22,6 +24,7 @@ def vector_grid(x, y):
         for j in range(x + 1):
             i.append(twod_vectorize())
     return grid
+
 
 def final_noise(x, y):
     vectors = vector_grid(10, 10)
@@ -39,12 +42,10 @@ def final_noise(x, y):
                 pass
 
 
-
-
 # grid = final_noise(10, 10)
 # print(grid)
 
-#numpy based version
+# numpy based version
 
 def generate_perlin_noise_2d(shape, res):
     def f(t):
@@ -71,15 +72,15 @@ def generate_perlin_noise_2d(shape, res):
     n1 = n01 * (1 - t[:, :, 0]) + t[:, :, 0] * n11
     return np.sqrt(2) * ((1 - t[:, :, 1]) * n0 + t[:, :, 1] * n1)
 
+
 def generate_fractal_noise_2d(shape, res, octaves=1, persistence=0.5):
     noise = np.zeros(shape)
     frequency = 1
     amplitude = 1
     for _ in range(octaves):
-        noise += amplitude * generate_perlin_noise_2d(shape, (frequency*res[0], frequency*res[1]))
+        noise += amplitude * generate_perlin_noise_2d(shape, (frequency * res[0], frequency * res[1]))
         frequency *= 2
         amplitude *= persistence
     return noise
 
 # print(generate_perlin_noise_2d((2, 4), (4, 8)))
-

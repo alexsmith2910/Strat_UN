@@ -1,5 +1,6 @@
 import pyglet
 
+
 class InitError(Exception):
     pass
 

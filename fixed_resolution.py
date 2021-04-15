@@ -1,5 +1,3 @@
-
-
 '''Demonstrates one way of fixing the display resolution to a certain
 size, but rendering to the full screen.
 
@@ -26,6 +24,7 @@ window = pyglet.window.Window(fullscreen=True)
 # can change this to a more reasonable value such as 800x600 here.
 target_resolution = 16, 16
 
+
 class FixedResolutionViewport:
     def __init__(self, window, width, height, filtered=False):
         self.window = window
@@ -33,18 +32,18 @@ class FixedResolutionViewport:
         self.height = height
         # Get the actual framebuffer size as this can be different from the window size
         self.framebuffer_width, self.framebuffer_height = self.window.get_framebuffer_size()
-        self.texture = pyglet.image.Texture.create(width, height, 
-            rectangle=True)
+        self.texture = pyglet.image.Texture.create(width, height,
+                                                   rectangle=True)
 
         if not filtered:
             # By default the texture will be bilinear filtered when scaled
             # up.  If requested, turn filtering off.  This makes the image
             # aliased, but is more suitable for pixel art.
-            glTexParameteri(self.texture.target, 
-                GL_TEXTURE_MAG_FILTER, GL_NEAREST)
-            glTexParameteri(self.texture.target, 
-                GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-    
+            glTexParameteri(self.texture.target,
+                            GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+            glTexParameteri(self.texture.target,
+                            GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+
     def begin(self):
         glViewport(0, 0, self.width, self.height)
         self.set_fixed_projection()
@@ -74,7 +73,7 @@ class FixedResolutionViewport:
         glLoadIdentity()
         glColor3f(1, 1, 1)
         self.texture.blit(x, y, width=scale_width, height=scale_height)
-    
+
     def set_fixed_projection(self):
         # Override this method if you need to change the projection of the
         # fixed resolution viewport.
@@ -91,9 +90,11 @@ class FixedResolutionViewport:
         glOrtho(0, self.window.width, 0, self.window.height, -1, 1)
         glMatrixMode(GL_MODELVIEW)
 
+
 target_width, target_height = target_resolution
-viewport = FixedResolutionViewport(window, 
-    target_width, target_height, filtered=False)
+viewport = FixedResolutionViewport(window,
+                                   target_width, target_height, filtered=False)
+
 
 def draw_scene():
     '''Draw the scene, assuming the fixed resolution viewport and projection
@@ -103,17 +104,23 @@ def draw_scene():
 
     glLoadIdentity()
     w, h = target_resolution
-    glTranslatef(w//2, h//2, 0)
+    glTranslatef(w // 2, h // 2, 0)
     glRotatef(rotate, 0, 0, 1)
     glColor3f(1, 0, 0)
     s = min(w, h) // 3
     glRectf(-s, -s, s, s)
 
+
 rotate = 0
+
+
 def update(dt):
     global rotate
     rotate += dt * 20
-pyglet.clock.schedule_interval(update, 1/60.)
+
+
+pyglet.clock.schedule_interval(update, 1 / 60.)
+
 
 @window.event
 def on_draw():
@@ -122,5 +129,5 @@ def on_draw():
     draw_scene()
     viewport.end()
 
-pyglet.app.run()
 
+pyglet.app.run()

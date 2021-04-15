@@ -145,10 +145,13 @@ class game_window(pyglet.window.Window):
         # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p4_name, 4))
 
         # self.HQ_spawn()
-        globals.building_objects.append(objects.HQ(x=110, y=50))
-        globals.building_objects.append(objects.HQ(x=1430, y=510))
-        globals.building_objects[len(globals.building_objects) - 2].set_owner((globals.p1_name, 1))
-        globals.building_objects[len(globals.building_objects) - 1].set_owner((globals.p2_name, 2))
+        p1HQ = (objects.HQ(x=110, y=50))
+        p2HQ = (objects.HQ(x=1430, y=510))
+        globals.building_objects[p1HQ.get_id()] = p1HQ
+        globals.building_objects[p2HQ.get_id()] = p2HQ
+        globals.building_objects[p1HQ.get_id()].set_owner((globals.p1_name, 1))
+        globals.building_objects[p2HQ.get_id()].set_owner((globals.p2_name, 2))
+
         # print(globals.building_objects[0].get_id())
         self.push_handlers(globals.key_handler)
         pyglet.clock.schedule_interval(self.update, 1 / 120.0)
@@ -185,11 +188,13 @@ class game_window(pyglet.window.Window):
                             if j.x >= globals.screenresx - distance:
                                 tile_copy.append(j)
             chosen = secrets.choice(tile_copy)
-            globals.building_objects.append(objects.HQ(x=chosen.get_x() + 10, y=chosen.get_y() + 10))
+            newHQ = objects.HQ(x=chosen.get_x() + 10, y=chosen.get_y() + 10)
+            HQID = newHQ.get_id()
+            globals.building_objects[HQID] = newHQ
             if cur_player == 1:
-                globals.building_objects[len(globals.building_objects) - 1].set_owner((globals.p1_name, 1))
+                globals.building_objects[HQID].set_owner((globals.p1_name, 1))
             elif cur_player == 2:
-                globals.building_objects[len(globals.building_objects) - 1].set_owner((globals.p2_name, 2))
+                globals.building_objects[HQID].set_owner((globals.p2_name, 2))
 
     def gen_overlays(self, xres=globals.screenresx, yres=globals.screenresy):
         # TODO: make overlay compatible with 2 player play, either if else 2 generations or let the original be generated then move
@@ -317,9 +322,9 @@ class game_window(pyglet.window.Window):
                                                     group=globals.ol_fg_group)
             self.roverlay_tree = gui.research_elements.Branch(direction="NW")
             self.research_items.append(gui.research_elements.ResearchSlot(700, 700,
-                                                                      spritesrc=pyglet.image.load(
-                                                                          "src/sprite/Basic-infantry.png"),
-                                                                      heldclass=objects.Basic_infantry))
+                                                                          spritesrc=pyglet.image.load(
+                                                                              "src/sprite/Basic-infantry.png"),
+                                                                          heldclass=objects.Basic_infantry))
             # self.timg = pyglet.image.load("src/sprite/Dev-tank-sprite.png")
             # self.rtank = pyglet.sprite.Sprite(self.timg, 200, 500, batch=globals.research_overlay_batch, group=globals.ol_fg_group)
             # self.rtank.scale = 0.2
@@ -535,49 +540,48 @@ class game_window(pyglet.window.Window):
                 spawnData = globals.online_received.pop("spawn")
                 # print(spawnData)
                 for troop_spawn in spawnData:
-                    globals.troop_objects.append(objects.str_to_class(troop_spawn.split(".")[0])
-                                                 (
-                                                 x=spawnData[troop_spawn]["locate"][0],
-                                                 y=spawnData[troop_spawn]["locate"][1],
-                                                 set_id=troop_spawn))
+                    globals.troop_objects[troop_spawn] = (objects.str_to_class(troop_spawn.split(".")[0])
+                        (
+                        x=spawnData[troop_spawn]["locate"][0],
+                        y=spawnData[troop_spawn]["locate"][1],
+                        set_id=troop_spawn))
                     #  Finds correct troop using class name, and spawns it with the other
                     #  Client's ID for it
-                    globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p2_name, 2))
+                    globals.troop_objects[troop_spawn].set_owner((globals.p2_name, 2))
                     # TODO: update to seperate online player from being a generic 2nd player
-                    # TODO: maybe convert troop and building storage from lists to dictionaries,
-                    # TODO: search using keys instead of lists?
                     # print(troop_spawn)
                     if "path" in spawnData:
-                        globals.troop_objects[len(globals.troop_objects) - 1].pathfind(
+                        globals.troop_objects[troop_spawn].pathfind(
                             globals.onl_r_spawns[troop_spawn]["path"])
             if "build" in globals.online_received:
                 buildData = globals.online_received.pop("build")
                 for build_key in buildData:
-                    globals.building_objects.append(objects.str_to_class(build_key.split(".")[0])
-                                                    (x=buildData[build_key]["locate"][0],
-                                                     y=buildData[build_key]["locate"][1],
-                                                     set_id=build_key))
+                    globals.building_objects[build_key] = (objects.str_to_class(build_key.split(".")[0])
+                                                           (x=buildData[build_key]["locate"][0],
+                                                            y=buildData[build_key]["locate"][1],
+                                                            set_id=build_key))
                     globals.building_objects[len(globals.building_objects) - 1].set_owner((globals.p2_name, 2))
             if "move" in globals.online_received:
                 moveData = globals.online_received.pop("move")
                 for move_event in moveData:
                     for i in globals.troop_objects:
-                        if move_event == i.get_id():
-                            i.ctarget = moveData[move_event]["path"][0]
-                            i.cpath = moveData[move_event]["path"][1:]
+                        if move_event == globals.troop_objects[i].get_id():
+                            globals.troop_objects[i].ctarget = moveData[move_event]["path"][0]
+                            globals.troop_objects[i].cpath = moveData[move_event]["path"][1:]
                             break
 
             #  TODO: Building and spawning done, now create sync
             #  TODO: Settings file?
+            #  TODO: Buildings now in dictionary, now do troops/turrets, etc
 
         # print(globals.p2Pos)
         for obj in self.game_objects:
             obj.update(dt)
             obj.check_bounds()
         for i in globals.building_objects:
-            i.update(dt)
+            globals.building_objects[i].update(dt)
         for i in globals.troop_objects:
-            i.update(dt)
+            globals.troop_objects[i].update(dt)
         for i in globals.bg_tiles:
             for j in i:
                 j.update(dt)
@@ -677,6 +681,7 @@ class game_window(pyglet.window.Window):
                     self.p2_overlay_clickable_return_l4_label.text = ""
 
         # Overlay editing
+        # TODO: update so when a collector is destroyed it will show the collection rate being reduced
         self.mineral_text = ("Mineral: " + str(round(globals.player1_lv1_res, 1)) + " (" + str(
             round(globals.player1_lv1_gen, 2)) + "/s)")  # ℤens
         self.overlay_mineral_label.text = self.mineral_text
@@ -745,7 +750,7 @@ class game_window(pyglet.window.Window):
             self.input_text = ''
             if globals.code == "MEMENTOMORI":
                 for i in globals.building_objects:
-                    if i.get_obj_type() == "Drill":
+                    if globals.building_objects[i].get_obj_type() == "Drill":
                         i.image = src.animations.animation.DUA_ani
                         objects.Drill.image = src.animations.animation.DUA_ani
 
@@ -802,12 +807,14 @@ class game_window(pyglet.window.Window):
         # print(str(button) + "Pressed at: " + str(x) + " " + str(y))
         got_troop = False
         got_building = False
+        # TODO: look at building an algorithm or another way to more quickly get the clicked object.
         for i in globals.troop_objects:
-            if self.get_centred_coords(i.get_x(), i.get_y()) == self.get_centred_coords(x, y):
-                self.tracked_type = i.get_overlay_name()
-                self.tracked_health = i.get_health()
-                self.tracked_shield = i.get_shield()
-                self.tracked_owner = i.get_owner_id()
+            if self.get_centred_coords(globals.troop_objects[i].get_x(),
+                                       globals.troop_objects[i].get_y()) == self.get_centred_coords(x, y):
+                self.tracked_type = globals.troop_objects[i].get_overlay_name()
+                self.tracked_health = globals.troop_objects[i].get_health()
+                self.tracked_shield = globals.troop_objects[i].get_shield()
+                self.tracked_owner = globals.troop_objects[i].get_owner_id()
                 self.clickable_text_temp = (str(self.tracked_type) + " - Health: " +
                                             str(round(self.tracked_health, 1)) + " + " +
                                             str(round(self.tracked_shield, 1)) + " Shield\n"
@@ -817,7 +824,8 @@ class game_window(pyglet.window.Window):
                 break
         if not got_troop:
             for i in globals.building_objects:
-                if self.get_centred_coords(i.get_x(), i.get_y()) == self.get_centred_coords(x, y):
+                if self.get_centred_coords(globals.building_objects[i].get_x(),
+                                           globals.building_objects[i].get_y()) == self.get_centred_coords(x, y):
                     self.tracked_type = i.get_overlay_name()
                     self.tracked_health = i.get_health()
                     self.tracked_shield = i.get_shield()
@@ -855,7 +863,7 @@ class game_window(pyglet.window.Window):
         globals.large_troop_batch.draw()
 
         for i in globals.building_objects:
-            if i.get_obj_type() == "Tracing turret":
+            if globals.building_objects[i].get_obj_type() == "Tracing turret":
                 i.get_tracer().draw()
 
         if self.show_data_overlay:

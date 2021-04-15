@@ -8,7 +8,6 @@ import pyglet
 import globals
 import objects
 
-
 # NOTE: os path takes the current file's location, while sys method returns the path of the file that is running
 
 dir_path = Path(os.path.dirname(os.path.realpath(__file__)))
@@ -247,7 +246,7 @@ class ResearchSlot():
 
         self.spriteinstance.scale = min(self.width, self.height) / \
                                     (maxdimension := max(self.spriteinstance.width, self.spriteinstance.height)) - (
-                                                2 / maxdimension)
+                                            2 / maxdimension)
 
         self.spriteinstance.x = self.startx + (0.5 * self.width) - (0.5 * self.spriteinstance.width)
         self.spriteinstance.y = self.starty + 1

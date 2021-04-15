@@ -18,4 +18,5 @@ def error_write(description, error, *, file_path=log_path):
     # dir_path = Path(sys.path[0]) # Allows a consistent relative path to the main script across all operating systems
     # file_path = dir_path / "log" / "log.txt"
     with open(file_path, "a+") as f:
-        f.write(str(datetime.now()) + ": Error occurred - " + str(description) + ", error message: " + str(error) + ", error type: " + str(type(error)) + "\n")
+        f.write(str(datetime.now()) + ": Error occurred - " + str(description) + ", error message: " + str(
+            error) + ", error type: " + str(type(error)) + "\n")

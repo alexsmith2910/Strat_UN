@@ -8,7 +8,6 @@ import pyglet
 
 dir_path = Path(sys.path[0])  # More consistent relative path
 
-
 drill_path = dir_path / "src" / "animations" / "drill"
 DUA_path = dir_path / "src" / "animations" / "DUA"
 drill_frames = os.listdir(drill_path)

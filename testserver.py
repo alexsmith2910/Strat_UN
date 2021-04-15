@@ -1,6 +1,7 @@
 import socket
 import time
 from netscript import dicttomessage
+
 while True:
     time.sleep(0.1)
     print("serving")

@@ -47,9 +47,6 @@
 #         self.selection_label.draw()
 
 
-
-
-
 # square = pyglet.shapes.Rectangle(x=200, y=200, width=200, height=200, color=(55, 55, 255))
 
 # if self.key_handler[key.LEFT] or self.lcounter != 0:
@@ -223,11 +220,11 @@
 
 # Auto targeting removed code
 # self.targeting = True
-                    # self.targeted = i
-                    # self.cpath = []
-                # else:
-                #     self.targeting = False
-                #     self.targeted = None
+# self.targeted = i
+# self.cpath = []
+# else:
+#     self.targeting = False
+#     self.targeted = None
 
 # label = pyglet.input_text.Label('Fuck off nick', j
 #                           font_name='Have Heart One',
@@ -236,7 +233,7 @@
 #                           anchor_x='center', anchor_y='center')
 
 
-    #vertex_list = pyglet.graphics.vertex_list(1024, 'v3f', 'c4B', 't2f', 'n3f')
+# vertex_list = pyglet.graphics.vertex_list(1024, 'v3f', 'c4B', 't2f', 'n3f')
 # event_logger = pyglet.window.event.WindowEventLogger()
 # window.push_handlers(event_logger)#used to find events to connect to commands
 
@@ -328,4 +325,3 @@
 # self.player_one.draw()
 # for i in self.game_objects:
 #     i.draw()
-

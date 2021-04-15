@@ -5,11 +5,13 @@ from pathfinding.finder.bi_a_star import BiAStarFinder
 from socket import gethostname
 import configparser
 import log
+
 # import socket
 # import sys
 
 settings = configparser.ConfigParser()
 settings.read("settings.ini")
+
 
 # print(settings["ONLINE"]["address"] == "localhost")
 # print(socket.gethostbyname(socket.gethostname()))
@@ -18,6 +20,7 @@ settings.read("settings.ini")
 
 def checkIfFirstAcceptance():
     return settings.getboolean("ONLINE", "firstconnect")
+
 
 if rawaddr := (settings["ONLINE"]["address"]) == "localhost":
     recipient = gethostname()
@@ -29,7 +32,7 @@ else:
 
 finder = BiAStarFinder(diagonal_movement=DiagonalMovement.always)
 
-#use to control offline multiplayer
+# use to control offline multiplayer
 offline_multi = False
 
 # Online multiplayer control and data storage
@@ -44,7 +47,7 @@ except KeyError as e:
     log.error_write(description="Could not find sync time option in settings file", error=e)
 except Exception as e:
     log.error_write(description="Attempted to load sync time", error=e)
-# TODO; Implement sync
+# TODO: Implement sync
 
 recievedName = False
 
@@ -85,7 +88,6 @@ ol_border_group = pyglet.graphics.OrderedGroup(11)
 ol_prim_group = pyglet.graphics.OrderedGroup(12)
 ol_fg_group = pyglet.graphics.OrderedGroup(13)
 
-
 p1_color = (150, 200, 255)
 p2_color = (255, 100, 100)
 p3_color = (160, 255, 100)
@@ -96,7 +98,7 @@ p2_name = "The creep"
 p3_name = "Smuuvi"
 p4_name = "AJS"
 
-p1_HQL = True # HQ Life - flag for if the player's HQ is still in play
+p1_HQL = True  # HQ Life - flag for if the player's HQ is still in play
 p2_HQL = True
 p3_HQL = True
 p4_HQL = True
@@ -112,9 +114,9 @@ s_bar_colour = (25, 82, 255)
 astar_map = []
 astar_matrix = None
 game_objects = []
-building_objects = []
+building_objects = {}
 turret_objects = []
-troop_objects = []
+troop_objects = {}
 
 player_num = 0
 player_list = []
@@ -141,7 +143,8 @@ screenresx = 1500
 screenresy = 1000
 bg_tiles = []
 
-building_costs = {"Target": (0, 0, 0), "Drill": (100, 0, 0), "Refinery": (500, 0, 0), "Oil_Rig": (500, 0, 0), "Basic_Turret": (1000, 0, 0), "Barracks": (500, 0, 0)}
+building_costs = {"Target": (0, 0, 0), "Drill": (100, 0, 0), "Refinery": (500, 0, 0), "Oil_Rig": (500, 0, 0),
+                  "Basic_Turret": (1000, 0, 0), "Barracks": (500, 0, 0)}
 barracks_selection = 0
 code = ""
 clickable = None
