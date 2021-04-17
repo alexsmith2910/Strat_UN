@@ -88,6 +88,8 @@ ol_border_group = pyglet.graphics.OrderedGroup(11)
 ol_prim_group = pyglet.graphics.OrderedGroup(12)
 ol_fg_group = pyglet.graphics.OrderedGroup(13)
 
+mapModifiers = {}
+
 p1_color = (150, 200, 255)
 p2_color = (255, 100, 100)
 p3_color = (160, 255, 100)

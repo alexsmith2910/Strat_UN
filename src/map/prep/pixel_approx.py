@@ -1,21 +1,33 @@
 from secrets import choice
 from PIL import Image
+import sys
 import os
 from os import listdir
 from os.path import isfile, join
+from pathlib import Path
+import globals
 
 # import os
-script_loc = (os.path.dirname(os.path.realpath(__file__)))
-script_loc = script_loc[:-4]
+# script_loc = (os.path.dirname(os.path.realpath(os.getcwd())))
+# script_loc = (os.path.dirname(os.path.abspath(sys.argv[0])))
+# script_loc = script_loc[:-4]
 
 
-def get_noise():
-    onlyfiles = [f for f in listdir(script_loc + "\\generated") if isfile(join(script_loc + "\\generated", f))]
-    # print(onlyfiles)
-    chosen = script_loc + "\\generated\\" + str(onlyfiles[69])
-    img = Image.open(chosen)
+def get_noise(chosen=None):
+    chosenpath = Path(globals.mainloc)
+    chosenpath = chosenpath.parents[0] / "src" / "map" / "generated"
+    if chosen is None:
+        onlyfiles = [f for f in listdir(chosenpath) if isfile(join(chosenpath, f))]
+        # print(onlyfiles)
+        chosenpath = chosenpath / (filename := choice(onlyfiles))
+    else:
+        chosenpath = chosenpath / chosen
+    img = Image.open(chosenpath)
     # img = Image.open("c:/users/sebas/downloads/KmFDqavv_o.jpg") # Manual override
-    return img
+    if chosen is None:
+        return filename, img
+    else:
+        return img
 
 
 def tileize(image_to_transform, tile_size):

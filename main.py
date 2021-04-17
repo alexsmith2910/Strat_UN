@@ -19,6 +19,9 @@ import gui
 import threading
 import net
 
+from os import path
+from sys import argv
+
 myappid = u'Zestyy.Strat_UN.Main.V0.2BETA'  # these lines are used to seperate the app from the python 'umbrella'
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
@@ -66,6 +69,10 @@ class serverThread(threading.Thread):  # threading.Thread
             data["username"] = globals.online_sending.pop("username")
         if "confirm_u" in globals.online_sending:
             data["confirm_u"] = globals.online_sending.pop("confirm_u")
+        if "mapfile" in globals.online_sending:
+            data["mapfile"] = globals.online_sending.pop("mapfile")
+        if "HQData" in globals.online_sending:
+            data["HQData"] = globals.online_sending.pop("HQData")
 
         if "spawn" in globals.online_sending:
             # print("found spawn tag: {0}".format(str(globals.online_sending)))
@@ -109,6 +116,7 @@ class serverThread(threading.Thread):  # threading.Thread
 class game_window(pyglet.window.Window):
     def __init__(self):
         super().__init__()  # self, game_window
+        globals.mainloc = path.realpath(argv[0])
         self.set_caption("Strat_UN")
         self.set_vsync(False)
         self.set_icon(win_icon)
@@ -120,12 +128,10 @@ class game_window(pyglet.window.Window):
         self.player_image.anchor_y = 10
         self.set_minimum_size(globals.screenresx, globals.screenresy)
         self.set_size(globals.screenresx, globals.screenresy)
-        globals.bg_tiles, globals.bg_batch = self.tiles_map()
+        # globals.bg_tiles, globals.bg_batch = self.tiles_map()
         self.player_one = objects.Player(x=550, y=550)
         self.player_one.set_id(globals.p1_name, 1)
-        self.player_two = objects.OnlinePlayer(x=700, y=700)
-        self.player_two.set_id(globals.p2_name, 2)
-        self.game_objects = [self.player_one, self.player_two]
+        self.game_objects = [self.player_one]
         if globals.offline_multi:
             self.player_two = objects.Player(x=650, y=650)
             self.player_two.set_id(globals.p2_name, 2)
@@ -133,9 +139,14 @@ class game_window(pyglet.window.Window):
         #  Testing code that spawns 4 dev tanks in
 
         # globals.troop_objects.append(objects.Dev_Tank(x=globals.building_objects[0].get_x()+100, y=globals.building_objects[0].get_y()+100))
-        # globals.troop_objects.append(objects.Dev_Tank(x=610, y=610))
-        # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p1_name, 1))
-        # globals.troop_objects[len(globals.troop_objects) - 1].health = 500
+
+        # Manually adding a troop under the new system
+        # t1 = (objects.Dev_Tank(x=610, y=610))
+        # t1ID = t1.get_id()
+        # globals.troop_objects[t1ID] = t1
+        # globals.troop_objects[t1ID].set_owner((globals.p1_name, 1))
+        # globals.troop_objects[t1ID].health = 500
+
         # globals.troop_objects.append(objects.Dev_Tank(x=710, y=410))
         # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p2_name, 2))
         # print(globals.troop_objects[len(globals.troop_objects) - 1].get_id())
@@ -145,19 +156,47 @@ class game_window(pyglet.window.Window):
         # globals.troop_objects[len(globals.troop_objects) - 1].set_owner((globals.p4_name, 4))
 
         # self.HQ_spawn()
-        p1HQ = (objects.HQ(x=110, y=50))
-        p2HQ = (objects.HQ(x=1430, y=510))
-        globals.building_objects[p1HQ.get_id()] = p1HQ
-        globals.building_objects[p2HQ.get_id()] = p2HQ
-        globals.building_objects[p1HQ.get_id()].set_owner((globals.p1_name, 1))
-        globals.building_objects[p2HQ.get_id()].set_owner((globals.p2_name, 2))
+
+        if (globals.online_multi and globals.checkIfFirstAcceptance()) or not globals.online_multi:
+            globals.bg_tiles, globals.bg_batch = self.tiles_map()
+            self.HQ_spawn()
 
         # print(globals.building_objects[0].get_id())
         self.push_handlers(globals.key_handler)
         pyglet.clock.schedule_interval(self.update, 1 / 120.0)
-        self.client = net.client.ClientThread()
-        self.client.start()  # TODO: test if starting the client first allows for the connection to be heard, to fix the issue.
-        self.winThread = serverThread()
+
+        if globals.online_multi:
+            self.client = net.client.ClientThread()
+            self.client.start()  # TODO: test if starting the client first allows for the connection to be heard, to fix the issue.
+            self.winThread = serverThread()
+            self.winThread.start()  # TODO: if not, test if the failure comes from it getting to the server and being forced to stay on it
+
+            if not globals.checkIfFirstAcceptance():
+                collected = False
+                mapGen = False
+                HQGen = False
+                while not collected:
+                    if "mapfile" in globals.online_received:
+                        filename = globals.online_received.pop("mapfile")
+                        globals.bg_tiles, globals.bg_batch = self.tiles_map(prechosen=filename)
+                        mapGen = True
+                    if "HQData" in globals.online_received:
+                        HQSpawns = globals.online_received.pop("HQData")
+                        p1HQ = (objects.HQ(x=HQSpawns["P1"][0], y=HQSpawns["P1"][1]))
+                        p2HQ = (objects.HQ(x=HQSpawns["P2"][0], y=HQSpawns["P2"][1]))
+                        globals.building_objects[p1HQ.get_id()] = p1HQ
+                        globals.building_objects[p2HQ.get_id()] = p2HQ
+                        globals.building_objects[p1HQ.get_id()].set_owner((globals.p1_name, 1))
+                        globals.building_objects[p2HQ.get_id()].set_owner((globals.p2_name, 2))
+                        HQGen = True
+                    if mapGen and HQGen:
+                        collected = True
+
+            pyglet.clock.schedule_interval(self.winThread.run, 0.05)
+            self.player_two = objects.OnlinePlayer(x=700, y=700)
+            self.player_two.set_id(globals.p2_name, 2)
+            self.game_objects.append(self.player_two)
+
         self.fps_display = pyglet.window.FPSDisplay(self)
         self.input_text = ''
         self.firstt = True  # this serves to avoid the first 't' used to activate the typing,
@@ -169,12 +208,11 @@ class game_window(pyglet.window.Window):
         self.show_data_overlay = False
         self.show_research_overlay = False
         self.clicked_object = None
-        self.winThread.start()  # TODO: if not, test if the failure comes from it getting to the server and being forced to stay on it
         # self.client.start()
-        pyglet.clock.schedule_interval(self.winThread.run, 0.05)
 
     def HQ_spawn(self, players=2, distance=120):
         cur_player = 0
+        HQData = {}
         for i in range(players):
             tile_copy = []
             cur_player += 1
@@ -193,8 +231,16 @@ class game_window(pyglet.window.Window):
             globals.building_objects[HQID] = newHQ
             if cur_player == 1:
                 globals.building_objects[HQID].set_owner((globals.p1_name, 1))
+                HQData["P1"] = (chosen.get_x()+10, chosen.get_y()+10)
             elif cur_player == 2:
                 globals.building_objects[HQID].set_owner((globals.p2_name, 2))
+                HQData["P2"] = (chosen.get_x() + 10, chosen.get_y() + 10)
+                if globals.online_multi:
+                    globals.online_sending["HQData"] = HQData
+
+                # TODO: send online to sync with other player
+                # TODO: if statement (online and host gen or not online gen)
+                # TODO: use args or use online + host
 
     def gen_overlays(self, xres=globals.screenresx, yres=globals.screenresy):
         # TODO: make overlay compatible with 2 player play, either if else 2 generations or let the original be generated then move
@@ -899,8 +945,15 @@ class game_window(pyglet.window.Window):
 
         # s.close()
 
-    def tiles_map(self, resx=globals.screenresx, resy=globals.screenresy, size=20):
-        grad = src.pixel_approx.tileize(src.pixel_approx.get_noise(), size)
+    def tiles_map(self, resx=globals.screenresx, resy=globals.screenresy, size=20, *, prechosen=None):
+        if prechosen is None:
+            filename, img = src.pixel_approx.get_noise()
+        else:
+            img = src.pixel_approx.get_noise(chosen=prechosen)
+        grad = src.pixel_approx.tileize(img, size)
+        if globals.online_multi and globals.checkIfFirstAcceptance():
+            globals.online_sending["mapfile"] = filename
+
 
         ylayers = resy // size
         # print(ylayers)
@@ -932,19 +985,22 @@ class game_window(pyglet.window.Window):
                     tilemod = -1
                 elif colournum >= 90 and colournum < 110:
                     tile_colour = shore
-                    tilemod = 1
+                    tilemod = 1/1
                 elif colournum >= 110 and colournum < 150:
                     tile_colour = land
-                    tilemod = 1
+                    tilemod = 1/1
                 elif colournum >= 150 and colournum < 175:
                     tile_colour = raised
-                    tilemod = 2
+                    tilemod = 1/2
                 elif colournum >= 175 and colournum < 210:
                     tile_colour = hill
-                    tilemod = 3
+                    tilemod = 1/3
                 elif colournum >= 210 and colournum <= 255:
                     tile_colour = mountain
-                    tilemod = 10
+                    tilemod = 1/10
+
+                globals.mapModifiers[(size * j, size * i)] = tilemod
+                # Generates a dictionary containing all modifiers, with keys as the coords of the tile as a tuple
 
                 current_tile = objects.TileBG(x=size * j, y=size * i, width=size, height=size, color=tile_colour,
                                               batch=globals.game_batch, group=globals.map_group)  # batch=tilebatch

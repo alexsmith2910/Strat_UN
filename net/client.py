@@ -90,6 +90,10 @@ class ClientThread(threading.Thread):
                         globals.online_received["build"] = jsonned["build"]
                     if "move" in jsonned:
                         globals.online_received["move"] = jsonned["move"]
+                    if "mapfile" in jsonned:
+                        globals.online_received["mapfile"] = jsonned["mapfile"]
+                    if "HQSpawn" in jsonned:
+                        globals.online_received["HQData"] = jsonned["HQData"]
 
                     #  Syncing usernames
                     if not globals.recievedName:

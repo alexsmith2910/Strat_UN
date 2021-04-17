@@ -561,7 +561,7 @@ class Troop(TileObject):
             globals.online_sending["move"][self.get_id()] = {
                 "path": self.cpath
             }
-            print("pathed")
+            # print("pathed")
             self.ctarget = self.cpath[0]
             for i in globals.bg_tiles:
                 for j in i:
@@ -698,14 +698,16 @@ class Troop(TileObject):
     def move(self, dt):
         cur_tile = self.get_centred_coords(self.x, self.y)
         if (self.last_tile != cur_tile or self.last_tile is None):
-            for i in globals.bg_tiles:
-                for j in i:
-                    if self.get_centred_coords(j.get_x(), j.get_y()) == cur_tile:
-                        self.current_tile = j
-                        self.last_tile = (self.current_tile.get_x(), self.current_tile.get_y())
-                        self.current_mod = self.current_tile.get_modifier()
-                        # print(self.current_mod)
-                        break
+            self.current_mod = globals.mapModifiers(cur_tile)
+            # for i in globals.bg_tiles:
+            #     for j in i:
+            #         # TODO: change to use mapModifiers instead of a linear search
+            #         if self.get_centred_coords(j.get_x(), j.get_y()) == cur_tile:
+            #             self.current_tile = j
+            #             self.last_tile = (self.current_tile.get_x(), self.current_tile.get_y())
+            #             self.current_mod = self.current_tile.get_modifier()
+            #             # print(self.current_mod)
+            #             break
 
         if self.ctarget != None:
             if self.firstpathstep:
@@ -799,7 +801,7 @@ class Troop(TileObject):
                 self.ctarget = None
                 self.auto_shooting = True
             try:
-                if globals.building_objects.index(self.targeted):
+                if globals.building_objects[self.targeted.get_id()]:
                     self.targetx = self.targeted.get_x()
                     self.targety = self.targeted.get_y()
                     if math.sqrt(((self.x - self.targetx) ** 2) + ((self.y - self.targety) ** 2)) <= self.range:
@@ -811,7 +813,7 @@ class Troop(TileObject):
         else:
             if self.target_type_allowed[0] == "Building":
                 for i in globals.building_objects:
-                    if i.get_owner() != self.owner_num and not self.targeting:
+                    if globals.building_objects[i].get_owner() != self.owner_num and not self.targeting:
                         self.targetx = i.get_x()
                         self.targety = i.get_y()
                         if math.sqrt(((self.x - self.targetx) ** 2) + ((self.y - self.targety) ** 2)) <= self.range:
@@ -838,12 +840,12 @@ class Troop(TileObject):
             if self.target_type_allowed[0] == "Troop" and self.target_type_allowed[
                 1] == "Preferred" and not self.targeting:
                 for i in globals.building_objects:
-                    if globals.troop_objects[i].get_owner() != self.owner_num and self.targeting is False:
-                        self.targetx = globals.troop_objects[i].get_x()
-                        self.targety = globals.troop_objects[i].get_y()
+                    if globals.building_objects[i].get_owner() != self.owner_num and self.targeting is False:
+                        self.targetx = globals.building_objects[i].get_x()
+                        self.targety = globals.building_objects[i].get_y()
                         if math.sqrt(((self.x - self.targetx) ** 2) + ((self.y - self.targety) ** 2)) <= self.range:
                             self.targeting = True
-                            self.targeted = globals.troop_objects[i]
+                            self.targeted = globals.building_objects[i]
                             self.cpath = []
                         else:
                             self.targeting = False
